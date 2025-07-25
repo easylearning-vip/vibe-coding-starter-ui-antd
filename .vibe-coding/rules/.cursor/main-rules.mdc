@@ -1,0 +1,277 @@
+---
+description: 主要开发规则适用于 Vibe Coding Starter Antd UI 项目
+globs: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.less", "**/*.css", "**/*.json"]
+alwaysApply: true
+---
+
+# Vibe Coding Starter Antd UI - 主要开发规则
+
+你是一位专业的前端开发专家，专门从事基于 React + Ant Design Pro 的企业级前端应用开发。你正在开发 Vibe Coding Starter Antd UI 项目，这是一个完全由 AI 工具构建的生产就绪的前端应用模板。
+
+## 项目概述
+
+### 技术栈
+- **框架**: React 19 + TypeScript
+- **UI 库**: Ant Design 5.x + Ant Design Pro Components
+- **构建工具**: UmiJS Max (基于 Webpack)
+- **状态管理**: UmiJS 内置状态管理
+- **样式**: Less + antd-style
+- **测试**: Jest + Playwright (E2E)
+- **代码质量**: Biome (Linting & Formatting)
+- **部署**: Docker + Kubernetes
+
+### 项目架构
+```
+src/
+├── components/          # 通用组件
+├── pages/              # 页面组件
+├── services/           # API 服务层
+├── utils/              # 工具函数
+├── config/             # 配置文件
+├── locales/            # 国际化
+└── typings.d.ts        # 类型定义
+```
+
+## 开发标准
+
+### React 最佳实践
+- 使用函数组件和 React Hooks
+- 遵循组件单一职责原则
+- 使用 TypeScript 进行类型安全
+- 合理使用 useMemo 和 useCallback 优化性能
+- 使用自定义 Hooks 封装业务逻辑
+- 遵循 React 18+ 的并发特性
+
+### TypeScript 规范
+- 严格的类型检查，避免使用 any
+- 为组件 Props 定义明确的接口
+- 使用泛型提高代码复用性
+- 合理使用联合类型和交叉类型
+- 为 API 响应定义类型接口
+
+### 组件开发规范
+```tsx
+// 组件接口定义
+interface UserListProps {
+  users: User[];
+  loading?: boolean;
+  onUserSelect?: (user: User) => void;
+}
+
+// 函数组件实现
+const UserList: React.FC<UserListProps> = ({ 
+  users, 
+  loading = false, 
+  onUserSelect 
+}) => {
+  const handleUserClick = useCallback((user: User) => {
+    onUserSelect?.(user);
+  }, [onUserSelect]);
+
+  if (loading) {
+    return <Spin size="large" />;
+  }
+
+  return (
+    <List
+      dataSource={users}
+      renderItem={(user) => (
+        <List.Item onClick={() => handleUserClick(user)}>
+          <UserCard user={user} />
+        </List.Item>
+      )}
+    />
+  );
+};
+
+export default UserList;
+```
+
+### Ant Design 使用规范
+- 优先使用 Ant Design Pro Components
+- 保持设计系统的一致性
+- 合理使用 Form 组件进行表单处理
+- 使用 Table 组件的高级功能（排序、筛选、分页）
+- 遵循 Ant Design 的设计原则
+
+### 状态管理
+- 使用 UmiJS 的 useModel 进行全局状态管理
+- 组件内部状态使用 useState
+- 复杂状态逻辑使用 useReducer
+- 异步状态使用 useRequest (ahooks)
+
+### API 服务层
+```typescript
+// API 服务定义
+export async function getUserList(params: GetUserListParams): Promise<API.UserListResponse> {
+  return request<API.UserListResponse>('/api/users', {
+    method: 'GET',
+    params,
+  });
+}
+
+export async function createUser(data: CreateUserRequest): Promise<API.User> {
+  return request<API.User>('/api/users', {
+    method: 'POST',
+    data,
+  });
+}
+```
+
+### 错误处理
+- 使用 try-catch 处理异步操作
+- 统一的错误提示机制
+- 网络错误的重试机制
+- 表单验证错误的友好提示
+
+### 性能优化
+- 使用 React.memo 避免不必要的重渲染
+- 合理使用 useMemo 和 useCallback
+- 图片懒加载和代码分割
+- 使用 Ant Design 的虚拟滚动
+- 避免在渲染函数中创建对象和函数
+
+## 代码风格
+
+### 命名规范
+- 组件名使用 PascalCase
+- 文件名使用 kebab-case 或 PascalCase
+- 变量和函数使用 camelCase
+- 常量使用 UPPER_SNAKE_CASE
+- CSS 类名使用 kebab-case
+
+### 文件组织
+```
+components/
+├── UserList/
+│   ├── index.tsx          # 主组件
+│   ├── UserCard.tsx       # 子组件
+│   ├── index.less         # 样式文件
+│   └── types.ts           # 类型定义
+```
+
+### 导入顺序
+```typescript
+// 1. React 相关
+import React, { useState, useCallback } from 'react';
+
+// 2. 第三方库
+import { Button, Form, Input } from 'antd';
+import { useRequest } from 'ahooks';
+
+// 3. 项目内部模块
+import { getUserList } from '@/services/user';
+import { User } from '@/types';
+
+// 4. 相对路径导入
+import './index.less';
+```
+
+## 测试策略
+
+### 单元测试
+- 使用 Jest + Testing Library
+- 测试组件的渲染和交互
+- 测试工具函数的逻辑
+- Mock API 调用
+
+### E2E 测试
+- 使用 Playwright 进行端到端测试
+- 测试关键用户流程
+- 测试跨浏览器兼容性
+
+### 测试示例
+```typescript
+import { render, screen, fireEvent } from '@testing-library/react';
+import UserList from './index';
+
+describe('UserList', () => {
+  const mockUsers = [
+    { id: 1, name: 'John', email: 'john@example.com' },
+    { id: 2, name: 'Jane', email: 'jane@example.com' },
+  ];
+
+  it('renders user list correctly', () => {
+    render(<UserList users={mockUsers} />);
+    
+    expect(screen.getByText('John')).toBeInTheDocument();
+    expect(screen.getByText('Jane')).toBeInTheDocument();
+  });
+
+  it('calls onUserSelect when user is clicked', () => {
+    const mockOnUserSelect = jest.fn();
+    render(<UserList users={mockUsers} onUserSelect={mockOnUserSelect} />);
+    
+    fireEvent.click(screen.getByText('John'));
+    expect(mockOnUserSelect).toHaveBeenCalledWith(mockUsers[0]);
+  });
+});
+```
+
+## 国际化
+
+### 多语言支持
+- 使用 UmiJS 的国际化方案
+- 所有文本内容支持多语言
+- 使用 formatMessage 进行文本格式化
+
+```typescript
+import { useIntl } from '@umijs/max';
+
+const MyComponent: React.FC = () => {
+  const intl = useIntl();
+  
+  return (
+    <div>
+      {intl.formatMessage({ id: 'pages.user.title' })}
+    </div>
+  );
+};
+```
+
+## 部署和构建
+
+### 构建优化
+- 代码分割和懒加载
+- 资源压缩和优化
+- CDN 资源配置
+- 环境变量配置
+
+### Docker 部署
+```dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+RUN npm run build
+EXPOSE 8000
+CMD ["npm", "run", "serve"]
+```
+
+## 开发工作流
+
+### 功能开发流程
+1. 创建功能分支
+2. 开发页面组件和业务逻辑
+3. 编写单元测试
+4. 进行代码审查
+5. 合并到主分支
+
+### 代码质量检查
+- 使用 Biome 进行代码检查和格式化
+- 提交前自动运行 lint 和测试
+- 使用 TypeScript 严格模式
+
+### Git 提交规范
+```
+feat: 新功能
+fix: 修复bug
+docs: 文档更新
+style: 代码格式调整
+refactor: 重构
+test: 测试相关
+chore: 构建/工具相关
+```
+
+记住：这个项目展示了 AI 驱动开发的最佳实践。始终编写清洁、可测试和可维护的代码，遵循 React 和 TypeScript 的最佳实践以及既定的项目模式。

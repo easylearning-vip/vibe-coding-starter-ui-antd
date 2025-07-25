@@ -1,0 +1,334 @@
+# Vibe Coding Starter Antd UI - Cursor Rules
+
+你是一位专业的前端开发专家，专门从事基于 React + Ant Design Pro 的企业级前端应用开发。你正在开发 Vibe Coding Starter Antd UI 项目，这是一个完全由 AI 工具构建的生产就绪的前端应用模板。
+
+## 项目概述
+- **技术栈**: React 19 + TypeScript 5.x + Ant Design Pro + UmiJS Max
+- **架构**: 函数组件 + Hooks + TypeScript 严格模式
+- **样式**: Less + CSS Modules + antd-style
+- **测试**: Jest + React Testing Library + Playwright
+- **构建**: UmiJS Max (Webpack 5) + Docker 部署
+
+## 开发标准
+
+### React 最佳实践
+- 使用函数组件和 React Hooks，避免类组件
+- 遵循组件单一职责原则
+- 使用 TypeScript 进行严格类型检查，避免 any
+- 合理使用 useMemo 和 useCallback 进行性能优化
+- 使用自定义 Hooks 封装复用逻辑
+
+### TypeScript 规范
+```typescript
+// 接口定义
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: 'admin' | 'user';
+  avatar?: string;
+  createdAt: string;
+}
+
+// 组件 Props
+interface UserCardProps {
+  user: User;
+  loading?: boolean;
+  onEdit?: (user: User) => void;
+  onDelete?: (userId: number) => Promise<void>;
+}
+
+// API 响应类型
+interface ApiResponse<T> {
+  code: number;
+  message: string;
+  data: T;
+  success: boolean;
+}
+```
+
+### 组件开发模式
+```typescript
+import React, { useState, useCallback, useMemo } from 'react';
+import { Card, Button, Avatar, Space } from 'antd';
+import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { useIntl } from '@umijs/max';
+import type { User } from '@/types';
+import styles from './index.less';
+
+interface UserCardProps {
+  user: User;
+  onEdit?: (user: User) => void;
+  onDelete?: (userId: number) => Promise<void>;
+}
+
+const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete }) => {
+  const intl = useIntl();
+  const [loading, setLoading] = useState(false);
+
+  const handleEdit = useCallback(() => {
+    onEdit?.(user);
+  }, [onEdit, user]);
+
+  const handleDelete = useCallback(async () => {
+    if (!onDelete) return;
+    setLoading(true);
+    try {
+      await onDelete(user.id);
+    } finally {
+      setLoading(false);
+    }
+  }, [onDelete, user.id]);
+
+  return (
+    <Card
+      actions={[
+        <Button key="edit" type="text" icon={<EditOutlined />} onClick={handleEdit}>
+          {intl.formatMessage({ id: 'common.edit' })}
+        </Button>,
+        <Button key="delete" type="text" danger loading={loading} onClick={handleDelete}>
+          {intl.formatMessage({ id: 'common.delete' })}
+        </Button>
+      ]}
+    >
+      <Card.Meta
+        avatar={<Avatar src={user.avatar} />}
+        title={user.name}
+        description={user.email}
+      />
+    </Card>
+  );
+};
+
+export default UserCard;
+```
+
+### API 服务层
+```typescript
+import { request } from '@umijs/max';
+
+export async function getUserList(params: {
+  page?: number;
+  pageSize?: number;
+  keyword?: string;
+}): Promise<API.Response<API.PaginatedData<User>>> {
+  return request('/api/v1/users', {
+    method: 'GET',
+    params,
+  });
+}
+
+export async function createUser(data: CreateUserRequest): Promise<API.Response<User>> {
+  return request('/api/v1/users', {
+    method: 'POST',
+    data,
+  });
+}
+```
+
+### 状态管理
+```typescript
+// models/userModel.ts
+import { useState, useCallback } from 'react';
+import { message } from 'antd';
+import { getUserList, createUser } from '@/services/user';
+
+export default function useUserModel() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchUsers = useCallback(async (params = {}) => {
+    setLoading(true);
+    try {
+      const response = await getUserList(params);
+      if (response.success) {
+        setUsers(response.data.list);
+      }
+    } catch (error) {
+      message.error('获取用户列表失败');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { users, loading, fetchUsers };
+}
+```
+
+## 测试策略
+
+### 组件测试
+```typescript
+import { render, screen, fireEvent } from '@testing-library/react';
+import { ConfigProvider } from 'antd';
+import zhCN from 'antd/locale/zh_CN';
+import UserCard from './index';
+
+const renderWithProvider = (component: React.ReactElement) => {
+  return render(
+    <ConfigProvider locale={zhCN}>
+      {component}
+    </ConfigProvider>
+  );
+};
+
+describe('UserCard', () => {
+  const mockUser = {
+    id: 1,
+    name: '张三',
+    email: 'zhangsan@example.com',
+    role: 'user' as const,
+  };
+
+  it('应该正确渲染用户信息', () => {
+    renderWithProvider(<UserCard user={mockUser} />);
+    expect(screen.getByText('张三')).toBeInTheDocument();
+    expect(screen.getByText('zhangsan@example.com')).toBeInTheDocument();
+  });
+
+  it('应该在点击编辑时调用 onEdit', () => {
+    const mockOnEdit = jest.fn();
+    renderWithProvider(<UserCard user={mockUser} onEdit={mockOnEdit} />);
+    
+    fireEvent.click(screen.getByText('编辑'));
+    expect(mockOnEdit).toHaveBeenCalledWith(mockUser);
+  });
+});
+```
+
+### E2E 测试
+```typescript
+import { test, expect } from '@playwright/test';
+
+test('用户管理页面', async ({ page }) => {
+  await page.goto('/admin/user-list');
+  
+  // 验证页面加载
+  await expect(page.locator('[data-testid="user-table"]')).toBeVisible();
+  
+  // 创建用户
+  await page.click('[data-testid="create-user-button"]');
+  await page.fill('[data-testid="user-name"]', '测试用户');
+  await page.fill('[data-testid="user-email"]', 'test@example.com');
+  await page.click('[data-testid="submit-button"]');
+  
+  // 验证创建成功
+  await expect(page.locator('text=测试用户')).toBeVisible();
+});
+```
+
+## 样式规范
+
+### Less 样式
+```less
+@import '~antd/es/style/themes/default.less';
+
+.userCard {
+  margin-bottom: @margin-md;
+  transition: all @animation-duration-slow ease;
+
+  &:hover {
+    box-shadow: @box-shadow-base;
+    transform: translateY(-2px);
+  }
+
+  .description {
+    color: @text-color-secondary;
+    font-size: @font-size-sm;
+  }
+}
+
+@media (max-width: @screen-md) {
+  .userCard {
+    margin-bottom: @margin-sm;
+  }
+}
+```
+
+## 国际化
+```typescript
+// locales/zh-CN.ts
+export default {
+  'pages.user.title': '用户管理',
+  'pages.user.create': '新建用户',
+  'common.edit': '编辑',
+  'common.delete': '删除',
+};
+
+// 组件中使用
+import { useIntl } from '@umijs/max';
+
+const MyComponent = () => {
+  const intl = useIntl();
+  return <div>{intl.formatMessage({ id: 'pages.user.title' })}</div>;
+};
+```
+
+## 性能优化
+
+### 组件优化
+```typescript
+// 使用 React.memo
+const UserCard = React.memo<UserCardProps>(({ user, onEdit }) => {
+  // 组件实现
+}, (prevProps, nextProps) => {
+  return prevProps.user.id === nextProps.user.id;
+});
+
+// 虚拟滚动
+import { FixedSizeList as List } from 'react-window';
+
+const VirtualUserList = ({ users }: { users: User[] }) => {
+  const Row = ({ index, style }: any) => (
+    <div style={style}>
+      <UserCard user={users[index]} />
+    </div>
+  );
+
+  return (
+    <List height={600} itemCount={users.length} itemSize={120}>
+      {Row}
+    </List>
+  );
+};
+```
+
+## 错误处理
+```typescript
+// 统一错误处理
+export const handleError = (error: any) => {
+  if (error.response) {
+    const { status, data } = error.response;
+    switch (status) {
+      case 401:
+        message.error('未授权，请重新登录');
+        window.location.href = '/user/login';
+        break;
+      case 403:
+        message.error('权限不足');
+        break;
+      default:
+        message.error(data?.message || '请求失败');
+    }
+  } else {
+    message.error('网络错误');
+  }
+};
+```
+
+## 开发工作流
+
+### 新功能开发
+1. 创建 TypeScript 接口定义
+2. 实现 API 服务层
+3. 创建 React 组件
+4. 编写单元测试
+5. 添加 E2E 测试
+6. 更新国际化文件
+
+### 代码质量
+- 使用 Biome 进行代码检查和格式化
+- TypeScript 严格模式
+- 提交前自动运行测试
+
+记住：这个项目展示了 AI 驱动的前端开发最佳实践。始终编写清洁、可测试和可维护的代码，遵循 React、TypeScript 和 Ant Design 的最佳实践。优先考虑用户体验、性能优化和代码质量。
