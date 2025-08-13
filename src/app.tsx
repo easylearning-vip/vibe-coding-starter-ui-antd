@@ -14,6 +14,7 @@ import {
 import DictProvider from '@/components/DictProvider';
 import LoggerControl from '@/components/LoggerControl';
 import { initializeLogConfig } from '@/config/logger.config';
+import type { PublicUser } from '@/services/user';
 import { getCurrentUser } from '@/services/user/api';
 import { logger } from '@/utils/logger';
 import defaultSettings from '../config/defaultSettings';
@@ -32,9 +33,9 @@ const loginPath = '/user/login';
  * */
 export async function getInitialState(): Promise<{
   settings?: Partial<LayoutSettings>;
-  currentUser?: UserAPI.PublicUser;
+  currentUser?: PublicUser;
   loading?: boolean;
-  fetchUserInfo?: () => Promise<UserAPI.PublicUser | undefined>;
+  fetchUserInfo?: () => Promise<PublicUser | undefined>;
 }> {
   const fetchUserInfo = async () => {
     try {

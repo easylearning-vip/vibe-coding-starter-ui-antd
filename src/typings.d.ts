@@ -16,3 +16,9 @@ declare module 'mockjs';
 declare module 'react-fittext';
 
 declare const REACT_APP_ENV: 'test' | 'dev' | 'pre' | false;
+
+declare global {
+  interface Window {
+    __INITIAL_STATE__?: any;
+  }
+}

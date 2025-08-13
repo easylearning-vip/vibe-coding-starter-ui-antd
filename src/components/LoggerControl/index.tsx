@@ -8,7 +8,7 @@ import React, { useState } from 'react';
 import { saveLogConfigToStorage } from '@/config/logger.config';
 import { LogLevel, logger } from '@/utils/logger';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 const { Option } = Select;
 
 const LoggerControl: React.FC = () => {

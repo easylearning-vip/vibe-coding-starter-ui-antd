@@ -1,5 +1,5 @@
 import { message } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   DICT_CATEGORIES,
   type DictCategory,
@@ -10,7 +10,7 @@ import {
 
 // 字典项选项类型（用于Select组件）
 export interface DictOption {
-  label: string;
+  label: string | React.ReactElement;
   value: string;
   disabled?: boolean;
   color?: string;
@@ -246,7 +246,9 @@ export function createDictSelectProps(_categoryCode: string) {
     placeholder: '请选择',
     allowClear: true,
     showSearch: true,
-    filterOption: (input: string, option?: DictOption) =>
-      (option?.label ?? '').toLowerCase().includes(input.toLowerCase()),
+    filterOption: (input: string, option?: DictOption) => {
+      const label = typeof option?.label === 'string' ? option.label : '';
+      return label.toLowerCase().includes(input.toLowerCase());
+    },
   };
 }

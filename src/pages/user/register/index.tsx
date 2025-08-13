@@ -5,6 +5,7 @@ import { Alert, App } from 'antd';
 import { createStyles } from 'antd-style';
 import React, { useState } from 'react';
 import { Footer } from '@/components';
+import type { RegisterRequest } from '@/services/user';
 import { register } from '@/services/user/api';
 import { logger } from '@/utils/logger';
 import Settings from '../../../../config/defaultSettings';
@@ -47,7 +48,7 @@ const Register: React.FC = () => {
   const { styles } = useStyles();
   const { message } = App.useApp();
 
-  const handleSubmit = async (values: UserAPI.RegisterRequest) => {
+  const handleSubmit = async (values: RegisterRequest) => {
     try {
       logger.debug('User registration attempt', {
         username: values.username,
@@ -112,7 +113,7 @@ const Register: React.FC = () => {
             },
           }}
           onFinish={async (values) => {
-            await handleSubmit(values as UserAPI.RegisterRequest);
+            await handleSubmit(values as RegisterRequest);
           }}
         >
           {status === 'error' && (

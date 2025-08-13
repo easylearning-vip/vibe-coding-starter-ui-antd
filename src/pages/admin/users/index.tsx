@@ -25,15 +25,13 @@ import DictSelect from '@/components/DictSelect';
 import DictTag from '@/components/DictTag';
 import { useUserRole, useUserStatus } from '@/hooks/useDict';
 import { DICT_CATEGORIES } from '@/services/dict/api';
+import type { User } from '@/services/user';
 import {
   createUser,
   deleteUser,
   getUserList,
   updateUser,
 } from '@/services/user/api';
-
-// 使用API类型定义
-type User = UserAPI.User;
 
 const UserManagement: React.FC = () => {
   const intl = useIntl();

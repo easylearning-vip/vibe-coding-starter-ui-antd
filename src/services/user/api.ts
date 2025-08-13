@@ -1,12 +1,25 @@
 import { request } from '@umijs/max';
+import type {
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest,
+  User,
+  UpdateProfileRequest,
+  ChangePasswordRequest,
+  SuccessResponse,
+  UserListParams,
+  ListResponse,
+  CreateUserRequest,
+  UpdateUserRequest,
+} from './typings';
 
 const API_BASE = '/api/v1';
 
 /**
  * User login
  */
-export async function login(params: UserAPI.LoginRequest): Promise<UserAPI.LoginResponse> {
-  return request<UserAPI.LoginResponse>(`${API_BASE}/users/login`, {
+export async function login(params: LoginRequest): Promise<LoginResponse> {
+  return request<LoginResponse>(`${API_BASE}/users/login`, {
     method: 'POST',
     data: params,
   });
@@ -15,8 +28,8 @@ export async function login(params: UserAPI.LoginRequest): Promise<UserAPI.Login
 /**
  * User registration
  */
-export async function register(params: UserAPI.RegisterRequest): Promise<UserAPI.User> {
-  return request<UserAPI.User>(`${API_BASE}/users/register`, {
+export async function register(params: RegisterRequest): Promise<User> {
+  return request<User>(`${API_BASE}/users/register`, {
     method: 'POST',
     data: params,
   });
@@ -25,8 +38,8 @@ export async function register(params: UserAPI.RegisterRequest): Promise<UserAPI
 /**
  * Get current user profile
  */
-export async function getCurrentUser(): Promise<UserAPI.User> {
-  return request<UserAPI.User>(`${API_BASE}/users/profile`, {
+export async function getCurrentUser(): Promise<User> {
+  return request<User>(`${API_BASE}/users/profile`, {
     method: 'GET',
   });
 }
@@ -34,8 +47,8 @@ export async function getCurrentUser(): Promise<UserAPI.User> {
 /**
  * Update current user profile
  */
-export async function updateProfile(params: UserAPI.UpdateProfileRequest): Promise<UserAPI.User> {
-  return request<UserAPI.User>(`${API_BASE}/users/profile`, {
+export async function updateProfile(params: UpdateProfileRequest): Promise<User> {
+  return request<User>(`${API_BASE}/users/profile`, {
     method: 'PUT',
     data: params,
   });
@@ -44,8 +57,8 @@ export async function updateProfile(params: UserAPI.UpdateProfileRequest): Promi
 /**
  * Change password
  */
-export async function changePassword(params: UserAPI.ChangePasswordRequest): Promise<UserAPI.SuccessResponse> {
-  return request<UserAPI.SuccessResponse>(`${API_BASE}/users/change-password`, {
+export async function changePassword(params: ChangePasswordRequest): Promise<SuccessResponse> {
+  return request<SuccessResponse>(`${API_BASE}/users/change-password`, {
     method: 'POST',
     data: params,
   });
@@ -54,8 +67,8 @@ export async function changePassword(params: UserAPI.ChangePasswordRequest): Pro
 /**
  * Get user list (admin only)
  */
-export async function getUserList(params?: UserAPI.UserListParams): Promise<UserAPI.ListResponse<UserAPI.User>> {
-  return request<UserAPI.ListResponse<UserAPI.User>>(`${API_BASE}/users`, {
+export async function getUserList(params?: UserListParams): Promise<ListResponse<User>> {
+  return request<ListResponse<User>>(`${API_BASE}/users`, {
     method: 'GET',
     params,
   });
@@ -64,8 +77,8 @@ export async function getUserList(params?: UserAPI.UserListParams): Promise<User
 /**
  * Create user (admin only)
  */
-export async function createUser(data: UserAPI.CreateUserRequest): Promise<UserAPI.User> {
-  return request<UserAPI.User>(`${API_BASE}/users`, {
+export async function createUser(data: CreateUserRequest): Promise<User> {
+  return request<User>(`${API_BASE}/users`, {
     method: 'POST',
     data,
   });
@@ -74,8 +87,8 @@ export async function createUser(data: UserAPI.CreateUserRequest): Promise<UserA
 /**
  * Update user (admin only)
  */
-export async function updateUser(id: number, data: UserAPI.UpdateUserRequest): Promise<UserAPI.User> {
-  return request<UserAPI.User>(`${API_BASE}/users/${id}`, {
+export async function updateUser(id: number, data: UpdateUserRequest): Promise<User> {
+  return request<User>(`${API_BASE}/users/${id}`, {
     method: 'PUT',
     data,
   });
@@ -84,8 +97,8 @@ export async function updateUser(id: number, data: UserAPI.UpdateUserRequest): P
 /**
  * Delete user (admin only)
  */
-export async function deleteUser(id: number): Promise<UserAPI.SuccessResponse> {
-  return request<UserAPI.SuccessResponse>(`${API_BASE}/users/${id}`, {
+export async function deleteUser(id: number): Promise<SuccessResponse> {
+  return request<SuccessResponse>(`${API_BASE}/users/${id}`, {
     method: 'DELETE',
   });
 }

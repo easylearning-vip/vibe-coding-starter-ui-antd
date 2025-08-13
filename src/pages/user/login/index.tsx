@@ -10,6 +10,7 @@ import { createStyles } from 'antd-style';
 import React, { useState } from 'react';
 import { flushSync } from 'react-dom';
 import { Footer } from '@/components';
+import type { LoginRequest } from '@/services/user';
 import { login } from '@/services/user/api';
 import { logger } from '@/utils/logger';
 import Settings from '../../../../config/defaultSettings';
@@ -51,8 +52,7 @@ const useStyles = createStyles(({ token }) => {
 });
 
 const Lang = () => {
-  const { styles } = useStyles();
-  return;
+  return null;
 };
 const LoginMessage: React.FC<{
   content: string;
@@ -89,7 +89,7 @@ const Login: React.FC = () => {
       });
     }
   };
-  const handleSubmit = async (values: UserAPI.LoginRequest) => {
+  const handleSubmit = async (values: LoginRequest) => {
     try {
       logger.debug('User login attempt', { username: values.username });
       // 登录
@@ -155,7 +155,7 @@ const Login: React.FC = () => {
             autoLogin: true,
           }}
           onFinish={async (values) => {
-            await handleSubmit(values as UserAPI.LoginRequest);
+            await handleSubmit(values as LoginRequest);
           }}
         >
           {status === 'error' && (

@@ -37,6 +37,7 @@ import {
   updateArticle,
 } from '@/services/article/api';
 import { DICT_CATEGORIES } from '@/services/dict/api';
+import type { User } from '@/services/user';
 import { getUserList } from '@/services/user/api';
 
 // 使用API类型定义
@@ -77,7 +78,7 @@ const ArticleManagement: React.FC = () => {
   });
 
   // 用户和分类数据
-  const [users, setUsers] = useState<UserAPI.User[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [categories] = useState([
     { id: 1, name: '技术' },
     { id: 2, name: '前端' },
