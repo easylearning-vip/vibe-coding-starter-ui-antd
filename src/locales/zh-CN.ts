@@ -1,4 +1,5 @@
 import component from './zh-CN/component';
+import department from './zh-CN/department';
 import globalHeader from './zh-CN/globalHeader';
 import menu from './zh-CN/menu';
 import pages from './zh-CN/pages';
@@ -21,4 +22,5 @@ export default {
   ...settings,
   ...pwa,
   ...component,
+  ...department,
 };

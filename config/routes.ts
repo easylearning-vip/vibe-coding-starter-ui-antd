@@ -22,6 +22,11 @@ export default [
         component: './admin/articles',
       },
       { path: '/admin/dict', name: '数据字典', component: './admin/dict' },
+      {
+        path: '/admin/department',
+        name: 'Department管理',
+        component: './admin/department',
+      },
     ],
   },
   { name: '文章管理', path: '/articles', component: './articles' },

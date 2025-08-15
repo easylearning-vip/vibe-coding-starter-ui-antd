@@ -1,4 +1,5 @@
 import component from './en-US/component';
+import department from './en-US/department';
 import globalHeader from './en-US/globalHeader';
 import menu from './en-US/menu';
 import pages from './en-US/pages';
@@ -22,4 +23,5 @@ export default {
   ...settings,
   ...pwa,
   ...component,
+  ...department,
 };
