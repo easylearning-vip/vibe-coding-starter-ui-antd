@@ -38,3 +38,9 @@ screenshot
 .firebase
 
 build
+
+test-results
+playwright-report
+
+.claude
+
