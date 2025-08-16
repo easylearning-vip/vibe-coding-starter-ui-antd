@@ -23,6 +23,16 @@ export default [
       },
       { path: '/admin/dict', name: '数据字典', component: './admin/dict' },
       {
+        path: '/admin/productcategory',
+        name: 'ProductCategory管理',
+        component: './admin/productcategory',
+      },
+      {
+        path: '/admin/product',
+        name: 'Product管理',
+        component: './admin/product',
+      },
+      {
         path: '/admin/department',
         name: 'Department管理',
         component: './admin/department',
