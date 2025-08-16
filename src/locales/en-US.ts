@@ -3,6 +3,8 @@ import department from './en-US/department';
 import globalHeader from './en-US/globalHeader';
 import menu from './en-US/menu';
 import pages from './en-US/pages';
+import product from './en-US/product';
+import productcategory from './en-US/productcategory';
 import pwa from './en-US/pwa';
 import settingDrawer from './en-US/settingDrawer';
 import settings from './en-US/settings';
@@ -23,5 +25,7 @@ export default {
   ...settings,
   ...pwa,
   ...component,
+  ...productcategory,
+  ...product,
   ...department,
 };

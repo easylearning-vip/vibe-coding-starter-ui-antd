@@ -1,0 +1,123 @@
+// Product 国际化配置 - 中文
+export default {
+  // 页面标题
+  'pages.product.title': 'Product管理',
+  'pages.product.subTitle': 'Product列表',
+
+  // 表格列头
+  'pages.product.table.id': 'ID',
+  'pages.product.table.name': 'Name 字符串',
+  'pages.product.table.description': 'Description 字符串',
+  'pages.product.table.category_id': 'CategoryId 32位无符号整数',
+  'pages.product.table.sku': 'Sku 字符串',
+  'pages.product.table.price': 'Price 64位浮点数',
+  'pages.product.table.cost_price': 'CostPrice 64位浮点数',
+  'pages.product.table.stock_quantity': 'StockQuantity 32位整数',
+  'pages.product.table.min_stock': 'MinStock 32位整数',
+  'pages.product.table.is_active': 'IsActive 布尔值',
+  'pages.product.table.weight': 'Weight 64位浮点数',
+  'pages.product.table.dimensions': 'Dimensions 字符串',
+  'pages.product.table.created_at': '创建时间',
+  'pages.product.table.updated_at': '更新时间',
+  'pages.product.table.createdAt': '创建时间',
+  'pages.product.table.updatedAt': '更新时间',
+
+  // 表单标签
+  'pages.product.form.id': 'ID',
+  'pages.product.form.id.placeholder': '请输入ID',
+  'pages.product.form.id.required': 'ID是必填项',
+  'pages.product.form.name': 'Name 字符串',
+  'pages.product.form.name.placeholder': '请输入Name 字符串',
+  'pages.product.form.name.required': 'Name 字符串是必填项',
+  'pages.product.form.description': 'Description 字符串',
+  'pages.product.form.description.placeholder': '请输入Description 字符串',
+  'pages.product.form.description.required': 'Description 字符串是必填项',
+  'pages.product.form.category_id': 'CategoryId 32位无符号整数',
+  'pages.product.form.category_id.placeholder':
+    '请输入CategoryId 32位无符号整数',
+  'pages.product.form.category_id.required':
+    'CategoryId 32位无符号整数是必填项',
+  'pages.product.form.sku': 'Sku 字符串',
+  'pages.product.form.sku.placeholder': '请输入Sku 字符串',
+  'pages.product.form.sku.required': 'Sku 字符串是必填项',
+  'pages.product.form.price': 'Price 64位浮点数',
+  'pages.product.form.price.placeholder': '请输入Price 64位浮点数',
+  'pages.product.form.price.required': 'Price 64位浮点数是必填项',
+  'pages.product.form.cost_price': 'CostPrice 64位浮点数',
+  'pages.product.form.cost_price.placeholder': '请输入CostPrice 64位浮点数',
+  'pages.product.form.cost_price.required': 'CostPrice 64位浮点数是必填项',
+  'pages.product.form.stock_quantity': 'StockQuantity 32位整数',
+  'pages.product.form.stock_quantity.placeholder':
+    '请输入StockQuantity 32位整数',
+  'pages.product.form.stock_quantity.required':
+    'StockQuantity 32位整数是必填项',
+  'pages.product.form.min_stock': 'MinStock 32位整数',
+  'pages.product.form.min_stock.placeholder': '请输入MinStock 32位整数',
+  'pages.product.form.min_stock.required': 'MinStock 32位整数是必填项',
+  'pages.product.form.is_active': 'IsActive 布尔值',
+  'pages.product.form.is_active.placeholder': '请输入IsActive 布尔值',
+  'pages.product.form.is_active.required': 'IsActive 布尔值是必填项',
+  'pages.product.form.weight': 'Weight 64位浮点数',
+  'pages.product.form.weight.placeholder': '请输入Weight 64位浮点数',
+  'pages.product.form.weight.required': 'Weight 64位浮点数是必填项',
+  'pages.product.form.dimensions': 'Dimensions 字符串',
+  'pages.product.form.dimensions.placeholder': '请输入Dimensions 字符串',
+  'pages.product.form.dimensions.required': 'Dimensions 字符串是必填项',
+  'pages.product.form.created_at': 'CreatedAt',
+  'pages.product.form.created_at.placeholder': '请输入CreatedAt',
+  'pages.product.form.created_at.required': 'CreatedAt是必填项',
+  'pages.product.form.updated_at': 'UpdatedAt',
+  'pages.product.form.updated_at.placeholder': '请输入UpdatedAt',
+  'pages.product.form.updated_at.required': 'UpdatedAt是必填项',
+  // 操作按钮
+  'pages.product.button.add': '新增Product',
+  'pages.product.button.edit': '编辑',
+  'pages.product.button.delete': '删除',
+  'pages.product.button.refresh': '刷新',
+  'pages.product.button.search': '搜索',
+  'pages.product.button.reset': '重置',
+  'pages.product.button.submit': '提交',
+  'pages.product.button.cancel': '取消',
+
+  // 对话框标题
+  'pages.product.modal.add.title': '新增Product',
+  'pages.product.modal.edit.title': '编辑Product',
+  'pages.product.modal.delete.title': '删除确认',
+  'pages.product.delete.confirm.title': '确定要删除这个Product吗？',
+  'pages.product.modal.delete.content': '确定要删除这个Product吗？',
+
+  // 消息提示
+  'pages.product.message.list.error': '获取Product列表失败',
+  'pages.product.message.add.success': 'Product创建成功',
+  'pages.product.message.edit.success': 'Product更新成功',
+  'pages.product.message.delete.success': 'Product删除成功',
+  'pages.product.message.add.error': 'Product创建失败',
+  'pages.product.message.edit.error': 'Product更新失败',
+  'pages.product.message.delete.error': 'Product删除失败',
+  'pages.product.message.save.error': '保存Product失败',
+
+  // 验证消息
+  'pages.product.validation.required': '此字段是必填项',
+  'pages.product.validation.min': '长度不能少于 {min} 个字符',
+  'pages.product.validation.max': '长度不能超过 {max} 个字符',
+  'pages.product.validation.email': '请输入有效的邮箱地址',
+  'pages.product.validation.number': '请输入有效的数字',
+
+  // 状态文本
+  'pages.product.status.active': '启用',
+  'pages.product.status.inactive': '禁用',
+  'pages.product.status.loading': '加载中...',
+  'pages.product.status.empty': '暂无数据',
+
+  // 通用消息（如果不存在的话）
+  'pages.common.actions': '操作',
+  'pages.common.edit': '编辑',
+  'pages.common.delete': '删除',
+  'pages.common.confirm': '确认',
+  'pages.common.cancel': '取消',
+  'pages.common.search': '搜索',
+  'pages.common.reset': '重置',
+  'pages.common.startDate': '开始日期',
+  'pages.common.endDate': '结束日期',
+  'pages.common.total.records': '共 {total} 条记录',
+};
