@@ -6,6 +6,8 @@ import pages from './en-US/pages';
 import pwa from './en-US/pwa';
 import settingDrawer from './en-US/settingDrawer';
 import settings from './en-US/settings';
+import test from './en-US/test';
+import part2question from './en-US/part2question';
 
 export default {
   'navBar.lang': 'Languages',
@@ -23,5 +25,7 @@ export default {
   ...settings,
   ...pwa,
   ...component,
+  ...test,
+  ...part2question,
   ...department,
 };
