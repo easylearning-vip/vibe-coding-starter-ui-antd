@@ -6,24 +6,36 @@ import {
   DatePicker,
   Form,
   Input,
-  InputNumber,
+  List,
   Modal,
   message,
   Popconfirm,
   Row,
   Space,
-  Table
+  Select,
+  Radio,
+  Tag,
+  Typography,
+  Divider,
+  Spin,
+  Pagination,
 } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
 import { useIntl } from '@umijs/max';
-import type { ColumnsType } from 'antd/es/table';
+import dayjs from 'dayjs';
 import {
   createPart2Question,
   deletePart2Question,
   getPart2QuestionList,
   updatePart2Question,
 } from '@/services/part2question/api';
+import { getScenarioOptions } from '@/services/scenario/api';
+import { getDifficultyLevelOptions } from '@/services/difficulty-level/api';
+
+const { RangePicker } = DatePicker;
+const { TextArea } = Input;
+const { Text, Title } = Typography;
 
 type Part2Question = Part2QuestionAPI.Part2Question;
 
@@ -35,6 +47,11 @@ const Part2QuestionManagement: React.FC = () => {
   const [editingPart2Question, setEditingPart2Question] = useState<Part2Question | null>(null);
   const [form] = Form.useForm();
   const [searchForm] = Form.useForm();
+
+  // 下拉框选项数据
+  const [scenarios, setScenarios] = useState<ScenarioAPI.Scenario[]>([]);
+  const [difficultyLevels, setDifficultyLevels] = useState<DifficultyLevelAPI.DifficultyLevel[]>([]);
+  const [optionsLoading, setOptionsLoading] = useState(false);
 
   // 分页和查询状态
   const [pagination, setPagination] = useState({
@@ -49,10 +66,7 @@ const Part2QuestionManagement: React.FC = () => {
     end_date: '',
   });
 
-  const [sorter, setSorter] = useState({
-    field: 'created_at',
-    order: 'descend' as 'ascend' | 'descend',
-  });
+
 
   // Utility function to safely render any value
   const safeRender = (value: any): string => {
@@ -69,167 +83,45 @@ const Part2QuestionManagement: React.FC = () => {
     return String(value);
   };
 
-  const columns: ColumnsType<Part2Question> = [
-    {
-      title: intl.formatMessage({ id: 'pages.part2Question.table.id' }),
-      dataIndex: 'id',
-      key: 'id',
-      width: 80,
-      fixed: 'left',
-      sorter: true,
-    },
-    {
-      title: intl.formatMessage({ id: 'pages.part2Question.table.test_id' }),
-      dataIndex: 'test_id',
-      key: 'test_id',
-      width: 100,
-      align: 'right',
-      sorter: true,
-    },
-    {
-      title: intl.formatMessage({ id: 'pages.part2Question.table.question_number' }),
-      dataIndex: 'question_number',
-      key: 'question_number',
-      width: 100,
-      align: 'right',
-      sorter: true,
-    },
-    {
-      title: intl.formatMessage({ id: 'pages.part2Question.table.question_text' }),
-      dataIndex: 'question_text',
-      key: 'question_text',
-      width: 150,
-      ellipsis: {
-        showTitle: false,
-      },
-      render: (question_text: any) => {
-        const value = safeRender(question_text);
-        return <span title={value}>{value}</span>;
-      },
-      sorter: true,
-    },
-    {
-      title: intl.formatMessage({ id: 'pages.part2Question.table.option_a' }),
-      dataIndex: 'option_a',
-      key: 'option_a',
-      width: 150,
-      ellipsis: {
-        showTitle: false,
-      },
-      render: (option_a: any) => {
-        const value = safeRender(option_a);
-        return <span title={value}>{value}</span>;
-      },
-      sorter: true,
-    },
-    {
-      title: intl.formatMessage({ id: 'pages.part2Question.table.option_b' }),
-      dataIndex: 'option_b',
-      key: 'option_b',
-      width: 150,
-      ellipsis: {
-        showTitle: false,
-      },
-      render: (option_b: any) => {
-        const value = safeRender(option_b);
-        return <span title={value}>{value}</span>;
-      },
-      sorter: true,
-    },
-    {
-      title: intl.formatMessage({ id: 'pages.part2Question.table.option_c' }),
-      dataIndex: 'option_c',
-      key: 'option_c',
-      width: 150,
-      ellipsis: {
-        showTitle: false,
-      },
-      render: (option_c: any) => {
-        const value = safeRender(option_c);
-        return <span title={value}>{value}</span>;
-      },
-      sorter: true,
-    },
-    {
-      title: intl.formatMessage({ id: 'pages.part2Question.table.correct_answer' }),
-      dataIndex: 'correct_answer',
-      key: 'correct_answer',
-      width: 150,
-      ellipsis: {
-        showTitle: false,
-      },
-      render: (correct_answer: any) => {
-        const value = safeRender(correct_answer);
-        return <span title={value}>{value}</span>;
-      },
-      sorter: true,
-    },
-    {
-      title: intl.formatMessage({ id: 'pages.part2Question.table.scenario_id' }),
-      dataIndex: 'scenario_id',
-      key: 'scenario_id',
-      width: 150,
-      ellipsis: {
-        showTitle: false,
-      },
-      render: (scenario_id: any) => {
-        const value = safeRender(scenario_id);
-        return <span title={value}>{value}</span>;
-      },
-      sorter: true,
-    },
-    {
-      title: intl.formatMessage({ id: 'pages.part2Question.table.difficulty_level_id' }),
-      dataIndex: 'difficulty_level_id',
-      key: 'difficulty_level_id',
-      width: 150,
-      ellipsis: {
-        showTitle: false,
-      },
-      render: (difficulty_level_id: any) => {
-        const value = safeRender(difficulty_level_id);
-        return <span title={value}>{value}</span>;
-      },
-      sorter: true,
-    },
-    {
-      title: intl.formatMessage({ id: 'pages.part2Question.table.created_at' }),
-      dataIndex: 'created_at',
-      key: 'created_at',
-      width: 150,
-      sorter: true,
-      render: (date: string) => new Date(date).toLocaleDateString(),
-    },
-    {
-      title: intl.formatMessage({ id: 'pages.common.actions' }),
-      key: 'action',
-      width: 150,
-      fixed: 'right',
-      render: (_, record) => (
-        <Space size="middle">
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          >
-            {intl.formatMessage({ id: 'pages.common.edit' })}
-          </Button>
-          <Popconfirm
-            title={intl.formatMessage({
-              id: 'pages.part2Question.delete.confirm.title',
-            })}
-            onConfirm={() => handleDelete(record)}
-            okText={intl.formatMessage({ id: 'pages.common.confirm' })}
-            cancelText={intl.formatMessage({ id: 'pages.common.cancel' })}
-          >
-            <Button type="link" danger icon={<DeleteOutlined />}>
-              {intl.formatMessage({ id: 'pages.common.delete' })}
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ];
+  // 加载下拉框选项数据
+  const loadOptions = async () => {
+    setOptionsLoading(true);
+    try {
+      const [scenarioData, difficultyData] = await Promise.all([
+        getScenarioOptions(),
+        getDifficultyLevelOptions(),
+      ]);
+      setScenarios(scenarioData);
+      setDifficultyLevels(difficultyData);
+    } catch (error) {
+      console.error('Failed to load options:', error);
+      message.error('Failed to load dropdown options');
+    } finally {
+      setOptionsLoading(false);
+    }
+  };
+
+  // 获取场景名称
+  const getScenarioName = (scenarioId: number): string => {
+    const scenario = scenarios.find(s => s.id === scenarioId);
+    return scenario ? scenario.name || '' : `Scenario ${scenarioId}`;
+  };
+
+  // 获取难度级别名称
+  const getDifficultyLevelName = (difficultyLevelId: number): string => {
+    const level = difficultyLevels.find(l => l.id === difficultyLevelId);
+    return level ? level.name || '' : `Level ${difficultyLevelId}`;
+  };
+
+  // 渲染正确答案标签
+  const renderCorrectAnswerTag = (correctAnswer: string): React.ReactNode => {
+    const colors = { A: 'blue', B: 'green', C: 'orange' };
+    return (
+      <Tag color={colors[correctAnswer as keyof typeof colors] || 'default'}>
+        {correctAnswer}
+      </Tag>
+    );
+  };
 
   const fetchPart2Questions = async (params?: {
     page?: number;
@@ -246,8 +138,8 @@ const Part2QuestionManagement: React.FC = () => {
         page: params?.page || pagination.current,
         page_size: params?.pageSize || pagination.pageSize,
         search: params?.search || searchParams.search,
-        sort: params?.sort || sorter.field,
-        order: params?.order || (sorter.order === 'descend' ? 'desc' : 'asc'),
+        sort: params?.sort || 'created_at',
+        order: params?.order || 'desc',
       };
 
       // 添加可选的过滤参数
@@ -379,27 +271,10 @@ const Part2QuestionManagement: React.FC = () => {
     });
   };
 
-  // 表格变化处理（分页、排序）
-  const handleTableChange = (
-    paginationConfig: any,
-    _filters: any,
-    sorterConfig: any,
-  ) => {
-    const newSorter = {
-      field: sorterConfig.field || 'created_at',
-      order: sorterConfig.order || 'descend',
-    };
-    setSorter(newSorter);
 
-    fetchPart2Questions({
-      page: paginationConfig.current,
-      pageSize: paginationConfig.pageSize,
-      sort: newSorter.field,
-      order: newSorter.order === 'descend' ? 'desc' : 'asc',
-    });
-  };
 
   useEffect(() => {
+    loadOptions();
     fetchPart2Questions();
   }, []);
 
@@ -469,90 +344,243 @@ const Part2QuestionManagement: React.FC = () => {
           </Button>
         </div>
 
-        <Table
-          columns={columns}
-          dataSource={ part2Questions}
-          rowKey="id"
+        <List
           loading={loading}
-          scroll={ { x: 800 } }
-          pagination={ {
-            ...pagination,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total) =>
-              intl.formatMessage(
-                { id: 'pages.common.total.records' },
-                { total },
-              ),
-            pageSizeOptions: ['10', '20', '50', '100'],
-          } }
-          onChange={handleTableChange}
+          dataSource={part2Questions}
+          renderItem={(item: Part2Question) => (
+            <List.Item
+              key={item.id}
+              actions={[
+                <Button
+                  key="edit"
+                  type="link"
+                  icon={<EditOutlined />}
+                  onClick={() => handleEdit(item)}
+                >
+                  Edit
+                </Button>,
+                <Popconfirm
+                  key="delete"
+                  title="Are you sure you want to delete this question?"
+                  onConfirm={() => handleDelete(item)}
+                  okText="Yes"
+                  cancelText="No"
+                >
+                  <Button type="link" danger icon={<DeleteOutlined />}>
+                    Delete
+                  </Button>
+                </Popconfirm>,
+              ]}
+            >
+              <Card
+                size="small"
+                style={{ width: '100%' }}
+                title={
+                  <Space>
+                    <QuestionCircleOutlined />
+                    <Text strong>Question #{safeRender(item.question_number)}</Text>
+                    <Tag color="blue">Test {safeRender(item.test_id)}</Tag>
+                    <Tag color="purple">{getScenarioName(Number(safeRender(item.scenario_id)))}</Tag>
+                    <Tag color="orange">{getDifficultyLevelName(Number(safeRender(item.difficulty_level_id)))}</Tag>
+                  </Space>
+                }
+              >
+                <div style={{ marginBottom: 16 }}>
+                  <Title level={5} style={{ margin: 0, marginBottom: 8 }}>
+                    {safeRender(item.question_text)}
+                  </Title>
+                </div>
+
+                <Row gutter={[16, 8]}>
+                  <Col span={8}>
+                    <Text strong>A: </Text>
+                    <Text>{safeRender(item.option_a)}</Text>
+                  </Col>
+                  <Col span={8}>
+                    <Text strong>B: </Text>
+                    <Text>{safeRender(item.option_b)}</Text>
+                  </Col>
+                  <Col span={8}>
+                    <Text strong>C: </Text>
+                    <Text>{safeRender(item.option_c)}</Text>
+                  </Col>
+                </Row>
+
+                <Divider style={{ margin: '12px 0' }} />
+
+                <Row justify="space-between" align="middle">
+                  <Col>
+                    <Space>
+                      <Text strong>Correct Answer:</Text>
+                      {renderCorrectAnswerTag(safeRender(item.correct_answer))}
+                    </Space>
+                  </Col>
+                  <Col>
+                    <Text type="secondary">
+                      {safeRender(item.created_at) ? dayjs(safeRender(item.created_at)).format('YYYY-MM-DD') : ''}
+                    </Text>
+                  </Col>
+                </Row>
+              </Card>
+            </List.Item>
+          )}
         />
+
+        <div style={{ textAlign: 'center', marginTop: 16 }}>
+          <Pagination
+            current={pagination.current}
+            pageSize={pagination.pageSize}
+            total={pagination.total}
+            showSizeChanger
+            showQuickJumper
+            showTotal={(total) => `Total ${total} records`}
+            pageSizeOptions={['10', '20', '50', '100']}
+            onChange={(page, pageSize) => {
+              fetchPart2Questions({
+                page,
+                pageSize,
+                ...searchParams,
+              });
+            }}
+          />
+        </div>
       </Card>
 
       <Modal
-        title={editingPart2Question ? '编辑Part2Question' : '新增Part2Question'}
+        title={
+          <Space>
+            <QuestionCircleOutlined />
+            {editingPart2Question ? 'Edit TOEIC Part 2 Question' : 'Add New TOEIC Part 2 Question'}
+          </Space>
+        }
         open={modalVisible}
         onOk={handleModalOk}
         onCancel={() => setModalVisible(false)}
-        width={600}
+        width={800}
+        confirmLoading={loading}
       >
-        <Form form={form} layout="vertical">
-          <Form.Item
-            name="test_id"
-            label="TestId"
-          >
-            <InputNumber style={ { width: '100%' } } />
-          </Form.Item>
-          <Form.Item
-            name="question_number"
-            label="QuestionNumber"
-          >
-            <InputNumber style={ { width: '100%' } } />
-          </Form.Item>
-          <Form.Item
-            name="question_text"
-            label="QuestionText"
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="option_a"
-            label="OptionA"
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="option_b"
-            label="OptionB"
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="option_c"
-            label="OptionC"
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="correct_answer"
-            label="CorrectAnswer"
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="scenario_id"
-            label="ScenarioId"
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="difficulty_level_id"
-            label="DifficultyLevelId"
-          >
-            <Input />
-          </Form.Item>
-        </Form>
+        <Spin spinning={optionsLoading}>
+          <Form form={form} layout="vertical">
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name="test_id"
+                  label="Test ID"
+                  rules={[{ required: true, message: 'Please enter test ID' }]}
+                >
+                  <Input placeholder="Enter test ID" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="question_number"
+                  label="Question Number"
+                  rules={[{ required: true, message: 'Please enter question number' }]}
+                >
+                  <Input placeholder="Enter question number" />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Form.Item
+              name="question_text"
+              label="Question Text"
+              rules={[{ required: true, message: 'Please enter the question text' }]}
+            >
+              <TextArea
+                rows={3}
+                placeholder="Enter the TOEIC Part 2 question text..."
+                showCount
+                maxLength={500}
+              />
+            </Form.Item>
+
+            <Divider orientation="left">Answer Options</Divider>
+
+            <Form.Item
+              name="option_a"
+              label="Option A"
+              rules={[{ required: true, message: 'Please enter option A' }]}
+            >
+              <Input placeholder="Enter option A text" />
+            </Form.Item>
+
+            <Form.Item
+              name="option_b"
+              label="Option B"
+              rules={[{ required: true, message: 'Please enter option B' }]}
+            >
+              <Input placeholder="Enter option B text" />
+            </Form.Item>
+
+            <Form.Item
+              name="option_c"
+              label="Option C"
+              rules={[{ required: true, message: 'Please enter option C' }]}
+            >
+              <Input placeholder="Enter option C text" />
+            </Form.Item>
+
+            <Form.Item
+              name="correct_answer"
+              label="Correct Answer"
+              rules={[{ required: true, message: 'Please select the correct answer' }]}
+            >
+              <Radio.Group>
+                <Radio value="A">A</Radio>
+                <Radio value="B">B</Radio>
+                <Radio value="C">C</Radio>
+              </Radio.Group>
+            </Form.Item>
+
+            <Divider orientation="left">Classification</Divider>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name="scenario_id"
+                  label="Scenario"
+                  rules={[{ required: true, message: 'Please select a scenario' }]}
+                >
+                  <Select
+                    placeholder="Select scenario"
+                    loading={optionsLoading}
+                    showSearch
+                    filterOption={(input, option) =>
+                      (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                    options={scenarios.map(scenario => ({
+                      value: scenario.id,
+                      label: scenario.name,
+                      title: scenario.description,
+                    }))}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="difficulty_level_id"
+                  label="Difficulty Level"
+                  rules={[{ required: true, message: 'Please select a difficulty level' }]}
+                >
+                  <Select
+                    placeholder="Select difficulty level"
+                    loading={optionsLoading}
+                    showSearch
+                    filterOption={(input, option) =>
+                      (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                    options={difficultyLevels.map(level => ({
+                      value: level.id,
+                      label: level.name,
+                      title: level.description,
+                    }))}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Form>
+        </Spin>
       </Modal>
     </PageContainer>
   );
