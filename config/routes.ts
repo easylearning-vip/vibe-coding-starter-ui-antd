@@ -39,6 +39,7 @@ export default [
       { path: '/toeic/test', name: '题库管理', component: './admin/test' },
       { path: '/toeic/part2question', name: 'Part2题库', component: './admin/part2question' },
       { path: '/toeic/part3question', name: 'Part3题库', component: './admin/part3question' },
+      { path: '/toeic/part4talk', name: 'Part4题库', component: './admin/part4talk' },
     ],
   },
   { name: '文章管理', path: '/articles', component: './articles' },
