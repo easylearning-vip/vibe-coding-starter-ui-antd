@@ -8,6 +8,7 @@ import settingDrawer from './en-US/settingDrawer';
 import settings from './en-US/settings';
 import test from './en-US/test';
 import part2question from './en-US/part2question';
+import toeic from './en-US/toeic';
 
 export default {
   'navBar.lang': 'Languages',
@@ -28,4 +29,5 @@ export default {
   ...test,
   ...part2question,
   ...department,
+  ...toeic,
 };

@@ -8,6 +8,7 @@ import settingDrawer from './zh-CN/settingDrawer';
 import settings from './zh-CN/settings';
 import test from './zh-CN/test';
 import part2question from './zh-CN/part2question';
+import toeic from './zh-CN/toeic';
 
 export default {
   'navBar.lang': '语言',
@@ -27,4 +28,5 @@ export default {
   ...test,
   ...part2question,
   ...department,
+  ...toeic,
 };

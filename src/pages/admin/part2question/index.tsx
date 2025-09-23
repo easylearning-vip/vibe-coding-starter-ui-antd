@@ -20,7 +20,7 @@ import {
   Spin,
   Pagination,
 } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, QuestionCircleOutlined, DownloadOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
 import { useIntl } from '@umijs/max';
 import dayjs from 'dayjs';
@@ -64,7 +64,12 @@ const Part2QuestionManagement: React.FC = () => {
     search: '',
     start_date: '',
     end_date: '',
+    scenario_id: '',
+    difficulty_level_id: '',
   });
+
+  // Export loading state
+  const [exportLoading, setExportLoading] = useState(false);
 
 
 
@@ -129,6 +134,8 @@ const Part2QuestionManagement: React.FC = () => {
     search?: string;
     start_date?: string;
     end_date?: string;
+    scenario_id?: string;
+    difficulty_level_id?: string;
     sort?: string;
     order?: string;
   }) => {
@@ -145,6 +152,8 @@ const Part2QuestionManagement: React.FC = () => {
       // 添加可选的过滤参数
       if (params?.start_date) queryParams.start_date = params.start_date;
       if (params?.end_date) queryParams.end_date = params.end_date;
+      if (params?.scenario_id) queryParams.scenario_id = params.scenario_id;
+      if (params?.difficulty_level_id) queryParams.difficulty_level_id = params.difficulty_level_id;
 
       const response = await getPart2QuestionList(queryParams);
 
@@ -246,6 +255,8 @@ const Part2QuestionManagement: React.FC = () => {
       search: values.search || '',
       start_date: values.date_range?.[0]?.format('YYYY-MM-DD') || '',
       end_date: values.date_range?.[1]?.format('YYYY-MM-DD') || '',
+      scenario_id: values.scenario_id || '',
+      difficulty_level_id: values.difficulty_level_id || '',
     };
     setSearchParams(newSearchParams);
     setPagination((prev) => ({ ...prev, current: 1 }));
@@ -261,6 +272,8 @@ const Part2QuestionManagement: React.FC = () => {
       search: '',
       start_date: '',
       end_date: '',
+      scenario_id: '',
+      difficulty_level_id: '',
     };
     setSearchParams(resetParams);
     setPagination((prev) => ({ ...prev, current: 1 }));
@@ -271,7 +284,95 @@ const Part2QuestionManagement: React.FC = () => {
     });
   };
 
+  // Export functionality
+  const handleExport = async () => {
+    setExportLoading(true);
+    try {
+      // Fetch all data with current filters (no pagination)
+      const queryParams: any = {
+        page: 1,
+        page_size: 10000, // Large number to get all results
+        search: searchParams.search,
+        sort: 'created_at',
+        order: 'desc',
+      };
 
+      // Add filter parameters
+      if (searchParams.start_date) queryParams.start_date = searchParams.start_date;
+      if (searchParams.end_date) queryParams.end_date = searchParams.end_date;
+      if (searchParams.scenario_id) queryParams.scenario_id = searchParams.scenario_id;
+      if (searchParams.difficulty_level_id) queryParams.difficulty_level_id = searchParams.difficulty_level_id;
+
+      const response = await getPart2QuestionList(queryParams);
+
+      // Transform the data
+      const transformedData = response.data.map((item: any) => ({
+        ...item,
+        correct_answer: item.correct_answer?.String || item.correct_answer || '',
+        scenario_id: item.scenario_id?.Int32 !== undefined ? item.scenario_id.Int32 : (item.scenario_id || ''),
+        difficulty_level_id: item.difficulty_level_id?.Int32 !== undefined ? item.difficulty_level_id.Int32 : (item.difficulty_level_id || ''),
+      }));
+
+      // Generate filename
+      let filename = 'toeic-part2';
+
+      // Add difficulty if filtered
+      if (searchParams.difficulty_level_id) {
+        const difficultyName = getDifficultyLevelName(parseInt(searchParams.difficulty_level_id));
+        filename += `-${difficultyName.toLowerCase()}`;
+      }
+
+      // Add scenario if filtered
+      if (searchParams.scenario_id) {
+        const scenarioName = getScenarioName(parseInt(searchParams.scenario_id));
+        const cleanScenarioName = scenarioName.replace(/[\/\s]/g, '-');
+        filename += `-${cleanScenarioName}`;
+      }
+
+      filename += `-${transformedData.length}-items.txt`;
+
+      // Generate file content
+      let content = '# TOEIC Part 2 - Response Questions\n\n';
+
+      // Add metadata
+      const difficultyLabel = searchParams.difficulty_level_id
+        ? getDifficultyLevelName(parseInt(searchParams.difficulty_level_id))
+        : 'Mixed';
+      const scenarioLabel = searchParams.scenario_id
+        ? getScenarioName(parseInt(searchParams.scenario_id))
+        : 'Mixed';
+
+      content += `**Difficulty:** ${difficultyLabel}\n`;
+      content += `**Scenario:** ${scenarioLabel}\n`;
+      content += `**Total Questions:** ${transformedData.length}\n\n`;
+
+      // Add questions
+      transformedData.forEach((item: any, index: number) => {
+        content += `${index + 1}. ${safeRender(item.question_text)}\n`;
+        content += `A. ${safeRender(item.option_a)}\n`;
+        content += `B. ${safeRender(item.option_b)}\n`;
+        content += `C. ${safeRender(item.option_c)}\n\n`;
+      });
+
+      // Create and download file
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      message.success(`Successfully exported ${transformedData.length} questions`);
+    } catch (error) {
+      console.error('Export failed:', error);
+      message.error('Export failed');
+    } finally {
+      setExportLoading(false);
+    }
+  };
 
   useEffect(() => {
     loadOptions();
@@ -294,7 +395,7 @@ const Part2QuestionManagement: React.FC = () => {
           style={ { marginBottom: 16 } }
         >
           <Row gutter={[16, 16]} style={ { width: '100%' } }>
-            <Col span={8}>
+            <Col span={6}>
               <Form.Item
                 name="search"
                 label={intl.formatMessage({ id: 'pages.part2Question.form.name' })}
@@ -307,21 +408,45 @@ const Part2QuestionManagement: React.FC = () => {
                 />
               </Form.Item>
             </Col>
-            <Col span={8}>
+            <Col span={6}>
               <Form.Item
-                name="date_range"
-                label={intl.formatMessage({ id: 'pages.part2Question.table.createdAt' })}
+                name="scenario_id"
+                label="Scenario"
               >
-                <DatePicker.RangePicker
-                  placeholder={[
-                    intl.formatMessage({ id: 'pages.common.startDate' }),
-                    intl.formatMessage({ id: 'pages.common.endDate' }),
-                  ]}
-                  style={ { width: '100%' } }
-                />
+                <Select
+                  placeholder="Select scenario"
+                  allowClear
+                  loading={optionsLoading}
+                >
+                  <Select.Option value="">All</Select.Option>
+                  {scenarios.map((scenario) => (
+                    <Select.Option key={scenario.id} value={scenario.id}>
+                      {scenario.name}
+                    </Select.Option>
+                  ))}
+                </Select>
               </Form.Item>
             </Col>
-            <Col span={8}>
+            <Col span={6}>
+              <Form.Item
+                name="difficulty_level_id"
+                label="Difficulty"
+              >
+                <Select
+                  placeholder="Select difficulty"
+                  allowClear
+                  loading={optionsLoading}
+                >
+                  <Select.Option value="">All</Select.Option>
+                  {difficultyLevels.map((level) => (
+                    <Select.Option key={level.id} value={level.id}>
+                      {level.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={6}>
               <Space>
                 <Button
                   type="primary"
@@ -336,12 +461,37 @@ const Part2QuestionManagement: React.FC = () => {
               </Space>
             </Col>
           </Row>
+          <Row gutter={[16, 16]} style={ { width: '100%', marginTop: 16 } }>
+            <Col span={12}>
+              <Form.Item
+                name="date_range"
+                label={intl.formatMessage({ id: 'pages.part2Question.table.createdAt' })}
+              >
+                <DatePicker.RangePicker
+                  placeholder={[
+                    intl.formatMessage({ id: 'pages.common.startDate' }),
+                    intl.formatMessage({ id: 'pages.common.endDate' }),
+                  ]}
+                  style={ { width: '100%' } }
+                />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
 
         <div style={buttonStyle}>
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-            {intl.formatMessage({ id: 'pages.part2Question.button.add' })}
-          </Button>
+          <Space>
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+              {intl.formatMessage({ id: 'pages.part2Question.button.add' })}
+            </Button>
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={handleExport}
+              loading={exportLoading}
+            >
+              Export
+            </Button>
+          </Space>
         </div>
 
         <List
