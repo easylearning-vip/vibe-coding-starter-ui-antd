@@ -15,6 +15,7 @@ export interface GetPart2QuestionListParams {
   end_date?: string;
   sort?: string;
   order?: string;
+  test_id?: number;
 }
 
 export interface Part2QuestionListResponse {

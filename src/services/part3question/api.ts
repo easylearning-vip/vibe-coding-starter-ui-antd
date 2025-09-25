@@ -17,6 +17,8 @@ export interface GetPart3ConversationListParams {
   order?: string;
   scenario_id?: string;
   difficulty_level_id?: string;
+  test_id?: number;
+  include_answer_options?: boolean;
 }
 
 export interface Part3ConversationListResponse {

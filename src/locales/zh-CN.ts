@@ -8,6 +8,8 @@ import settingDrawer from './zh-CN/settingDrawer';
 import settings from './zh-CN/settings';
 import test from './zh-CN/test';
 import part2question from './zh-CN/part2question';
+import part3question from './zh-CN/part3question';
+import part4talk from './zh-CN/part4talk';
 import toeic from './zh-CN/toeic';
 
 export default {
@@ -27,6 +29,8 @@ export default {
   ...component,
   ...test,
   ...part2question,
+  ...part3question,
+  ...part4talk,
   ...department,
   ...toeic,
 };

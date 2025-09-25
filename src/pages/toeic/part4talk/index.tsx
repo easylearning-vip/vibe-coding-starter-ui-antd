@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Button,
   Card,
@@ -35,6 +35,9 @@ import {
 } from '@/services/part4talk/api';
 import { getScenarioOptions } from '@/services/scenario/api';
 import { getDifficultyLevelOptions } from '@/services/difficulty-level/api';
+import { getTestList } from '@/services/test/api';
+import { useMultipleApiRequests } from '@/hooks/useApiRequest';
+import { withDeduplication } from '@/utils/requestDeduplication';
 
 const { RangePicker } = DatePicker;
 const { TextArea } = Input;
@@ -53,10 +56,39 @@ const Part4TalkManagement: React.FC = () => {
   const [form] = Form.useForm();
   const [searchForm] = Form.useForm();
 
-  // 下拉框选项数据
-  const [scenarios, setScenarios] = useState<ScenarioAPI.Scenario[]>([]);
-  const [difficultyLevels, setDifficultyLevels] = useState<DifficultyLevelAPI.DifficultyLevel[]>([]);
-  const [optionsLoading, setOptionsLoading] = useState(false);
+  // 使用新的API请求hook来管理下拉框选项数据
+  const {
+    data: optionsData,
+    loading: optionsLoading,
+    errors: optionsErrors,
+    runSingle: runSingleOption,
+  } = useMultipleApiRequests({
+    scenarios: {
+      apiFunction: getScenarioOptions,
+      cacheKey: 'scenario_options',
+    },
+    difficultyLevels: {
+      apiFunction: getDifficultyLevelOptions,
+      cacheKey: 'difficulty_level_options',
+    },
+    tests: {
+      apiFunction: () => getTestList({ page: 1, page_size: 100 }),
+      cacheKey: 'test_list_options',
+    },
+  }, {
+    onError: (errors) => {
+      console.error('Failed to load options:', errors);
+      message.error('Failed to load dropdown options');
+    },
+  });
+
+  // Aggregate loading state for options (useMultipleApiRequests returns an object)
+  const isOptionsLoading = Object.values(optionsLoading || {}).some(Boolean);
+
+  // 从API响应中提取数据
+  const scenarios = optionsData.scenarios || [];
+  const difficultyLevels = optionsData.difficultyLevels || [];
+  const tests = optionsData.tests?.data || [];
 
   // 分页相关状态
   const [pagination, setPagination] = useState({
@@ -92,6 +124,12 @@ const Part4TalkManagement: React.FC = () => {
     return level ? safeRender(level.name) : 'Unknown';
   };
 
+  // 获取测试名称
+  const getTestName = (testId: number): string => {
+    const test = tests.find(t => t.id === testId);
+    return test ? test.name || '' : `Test ${testId}`;
+  };
+
   // 渲染正确答案标签
   const renderCorrectAnswerTag = (answer: string): React.ReactNode => {
     const colors: { [key: string]: string } = {
@@ -103,32 +141,28 @@ const Part4TalkManagement: React.FC = () => {
     return <Tag color={colors[answer] || 'default'}>{answer}</Tag>;
   };
 
-  // 加载下拉框选项数据
-  const loadOptions = async () => {
-    setOptionsLoading(true);
-    try {
-      const [scenarioData, difficultyData] = await Promise.all([
-        getScenarioOptions(),
-        getDifficultyLevelOptions(),
-      ]);
-      setScenarios(scenarioData || []);
-      setDifficultyLevels(difficultyData || []);
-    } catch (error) {
-      console.error('Failed to load options:', error);
-      message.error('Failed to load dropdown options');
-    } finally {
-      setOptionsLoading(false);
-    }
-  };
+  // 创建带去重的API函数
+  const dePart4TalkList = withDeduplication(
+    getPart4TalkList,
+    (params) => `/api/v1/admin/part4talks?${JSON.stringify(params)}`,
+    (params) => ({ params })
+  );
 
-  // 获取Part4Talk列表
-  const fetchPart4Talks = async (params?: any) => {
+  const dePart4AnswerOptionsByTalk = withDeduplication(
+    getPart4AnswerOptionsByTalk,
+    (talkId) => `/api/v1/admin/part4answeroptions/talk/${talkId}`,
+    (talkId) => ({ params: { talkId } })
+  );
+
+  // 获取Part4Talk列表 - 使用去重版本，现在包含答案选项
+  const fetchPart4Talks = useCallback(async (params?: any) => {
     setLoading(true);
     try {
       const searchValues = searchForm.getFieldsValue();
       const requestParams = {
-        page: pagination.current,
-        page_size: pagination.pageSize,
+        page: params?.page || pagination.current,
+        page_size: params?.page_size || pagination.pageSize,
+        include_answer_options: true, // 预加载答案选项
         ...searchValues,
         ...params,
       };
@@ -139,7 +173,7 @@ const Part4TalkManagement: React.FC = () => {
         requestParams.end_date = searchValues.dateRange[1].format('YYYY-MM-DD');
       }
 
-      const response = await getPart4TalkList(requestParams);
+      const response = await dePart4TalkList(requestParams);
       setPart4Talks(response.data || []);
       setPagination(prev => ({
         ...prev,
@@ -148,25 +182,11 @@ const Part4TalkManagement: React.FC = () => {
         pageSize: response.size || 10,
       }));
 
-      // 加载每个对话的答案选项
-      const answerPromises = (response.data || []).map(async (talk: Part4Talk) => {
-        if (talk.id) {
-          try {
-            const answers = await getPart4AnswerOptionsByTalk(talk.id);
-            return { talkId: talk.id, answers };
-          } catch (error) {
-            console.error(`Failed to load answers for talk ${talk.id}:`, error);
-            return { talkId: talk.id, answers: [] };
-          }
-        }
-        return { talkId: 0, answers: [] };
-      });
-
-      const answerResults = await Promise.all(answerPromises);
+      // 从响应中提取答案选项，无需额外请求
       const answersMap: { [key: number]: Part4AnswerOption[] } = {};
-      answerResults.forEach(result => {
-        if (result.talkId > 0) {
-          answersMap[result.talkId] = result.answers;
+      (response.data || []).forEach((talk: Part4Talk) => {
+        if (talk.id && talk.answer_options) {
+          answersMap[talk.id] = talk.answer_options;
         }
       });
       setTalkAnswers(answersMap);
@@ -177,7 +197,7 @@ const Part4TalkManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchForm, dePart4TalkList]);
 
   // 搜索处理
   const handleSearch = (values: any) => {
@@ -202,11 +222,10 @@ const Part4TalkManagement: React.FC = () => {
     fetchPart4Talks({ page, page_size: pageSize });
   };
 
-  // 初始化
+  // 初始化 - 只调用fetchPart4Talks，选项数据由useMultipleApiRequests自动管理
   useEffect(() => {
-    loadOptions();
     fetchPart4Talks();
-  }, []);
+  }, []); // 移除fetchPart4Talks依赖，避免无限循环
 
   // 新增对话
   const handleAdd = () => {
@@ -219,11 +238,11 @@ const Part4TalkManagement: React.FC = () => {
   const handleEdit = async (talk: Part4Talk) => {
     setEditingTalk(talk);
     
-    // 加载答案选项
+    // 加载答案选项 - 使用去重版本
     let answers: Part4AnswerOption[] = [];
     if (talk.id) {
       try {
-        answers = await getPart4AnswerOptionsByTalk(talk.id);
+        answers = await dePart4AnswerOptionsByTalk(talk.id);
       } catch (error) {
         console.error('Failed to load answer options:', error);
       }
@@ -357,7 +376,7 @@ const Part4TalkManagement: React.FC = () => {
                 <Select
                   placeholder="Select scenario"
                   allowClear
-                  loading={optionsLoading}
+                  loading={isOptionsLoading}
                 >
                   <Select.Option value="">All</Select.Option>
                   {scenarios.map((scenario) => (
@@ -376,7 +395,7 @@ const Part4TalkManagement: React.FC = () => {
                 <Select
                   placeholder="Select difficulty"
                   allowClear
-                  loading={optionsLoading}
+                  loading={isOptionsLoading}
                 >
                   <Select.Option value="">All</Select.Option>
                   {difficultyLevels.map((level) => (
@@ -397,6 +416,25 @@ const Part4TalkManagement: React.FC = () => {
             </Col>
           </Row>
           <Row gutter={[16, 16]} style={{ width: '100%', marginTop: 8 }}>
+            <Col span={6}>
+              <Form.Item
+                name="test_id"
+                label="Test"
+              >
+                <Select
+                  placeholder="Select test"
+                  allowClear
+                  loading={isOptionsLoading}
+                >
+                  <Select.Option value="">All</Select.Option>
+                  {tests.map((test) => (
+                    <Select.Option key={test.id} value={test.id}>
+                      {test.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
             <Col>
               <Space>
                 <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
@@ -454,7 +492,7 @@ const Part4TalkManagement: React.FC = () => {
                     <Space>
                       <MessageOutlined />
                       <Text strong>Talk #{safeRender(item.talk_number)}</Text>
-                      <Tag color="blue">Test {safeRender(item.test_id)}</Tag>
+                      <Tag color="blue">{getTestName(Number(safeRender(item.test_id)))}</Tag>
                       <Tag color="purple">{getScenarioName(Number(safeRender(item.scenario_id)))}</Tag>
                       <Tag color="orange">{getDifficultyLevelName(Number(safeRender(item.difficulty_level_id)))}</Tag>
                     </Space>
@@ -470,7 +508,11 @@ const Part4TalkManagement: React.FC = () => {
 
                   <div style={{ marginBottom: 16 }}>
                     <Text strong>Content: </Text>
-                    <Text>{safeRender(item.content)}</Text>
+                    {safeRender(item.content) ? (
+                      <Text>{safeRender(item.content)}</Text>
+                    ) : (
+                      <Text type="secondary" italic>No content available</Text>
+                    )}
                   </div>
 
                   <Collapse size="small" ghost>
@@ -481,12 +523,12 @@ const Part4TalkManagement: React.FC = () => {
                           <Text>{safeRender(item.question1)}</Text>
                           {question1Answer && (
                             <div style={{ marginTop: 4, marginLeft: 16 }}>
-                              <Row gutter={[8, 4]}>
-                                <Col span={6}><Text>A: {safeRender(question1Answer.option_a)}</Text></Col>
-                                <Col span={6}><Text>B: {safeRender(question1Answer.option_b)}</Text></Col>
-                                <Col span={6}><Text>C: {safeRender(question1Answer.option_c)}</Text></Col>
-                                <Col span={6}><Text>D: {safeRender(question1Answer.option_d)}</Text></Col>
-                              </Row>
+                              <div style={{ marginLeft: 16 }}>
+                                <div style={{ marginBottom: 4 }}><Text>A: {safeRender(question1Answer.option_a)}</Text></div>
+                                <div style={{ marginBottom: 4 }}><Text>B: {safeRender(question1Answer.option_b)}</Text></div>
+                                <div style={{ marginBottom: 4 }}><Text>C: {safeRender(question1Answer.option_c)}</Text></div>
+                                <div style={{ marginBottom: 4 }}><Text>D: {safeRender(question1Answer.option_d)}</Text></div>
+                              </div>
                               <div style={{ marginTop: 4 }}>
                                 <Text strong>Answer: </Text>
                                 {renderCorrectAnswerTag(safeRender(question1Answer.correct_answer))}
@@ -502,12 +544,12 @@ const Part4TalkManagement: React.FC = () => {
                           <Text>{safeRender(item.question2)}</Text>
                           {question2Answer && (
                             <div style={{ marginTop: 4, marginLeft: 16 }}>
-                              <Row gutter={[8, 4]}>
-                                <Col span={6}><Text>A: {safeRender(question2Answer.option_a)}</Text></Col>
-                                <Col span={6}><Text>B: {safeRender(question2Answer.option_b)}</Text></Col>
-                                <Col span={6}><Text>C: {safeRender(question2Answer.option_c)}</Text></Col>
-                                <Col span={6}><Text>D: {safeRender(question2Answer.option_d)}</Text></Col>
-                              </Row>
+                              <div style={{ marginLeft: 16 }}>
+                                <div style={{ marginBottom: 4 }}><Text>A: {safeRender(question2Answer.option_a)}</Text></div>
+                                <div style={{ marginBottom: 4 }}><Text>B: {safeRender(question2Answer.option_b)}</Text></div>
+                                <div style={{ marginBottom: 4 }}><Text>C: {safeRender(question2Answer.option_c)}</Text></div>
+                                <div style={{ marginBottom: 4 }}><Text>D: {safeRender(question2Answer.option_d)}</Text></div>
+                              </div>
                               <div style={{ marginTop: 4 }}>
                                 <Text strong>Answer: </Text>
                                 {renderCorrectAnswerTag(safeRender(question2Answer.correct_answer))}
@@ -523,12 +565,12 @@ const Part4TalkManagement: React.FC = () => {
                           <Text>{safeRender(item.question3)}</Text>
                           {question3Answer && (
                             <div style={{ marginTop: 4, marginLeft: 16 }}>
-                              <Row gutter={[8, 4]}>
-                                <Col span={6}><Text>A: {safeRender(question3Answer.option_a)}</Text></Col>
-                                <Col span={6}><Text>B: {safeRender(question3Answer.option_b)}</Text></Col>
-                                <Col span={6}><Text>C: {safeRender(question3Answer.option_c)}</Text></Col>
-                                <Col span={6}><Text>D: {safeRender(question3Answer.option_d)}</Text></Col>
-                              </Row>
+                              <div style={{ marginLeft: 16 }}>
+                                <div style={{ marginBottom: 4 }}><Text>A: {safeRender(question3Answer.option_a)}</Text></div>
+                                <div style={{ marginBottom: 4 }}><Text>B: {safeRender(question3Answer.option_b)}</Text></div>
+                                <div style={{ marginBottom: 4 }}><Text>C: {safeRender(question3Answer.option_c)}</Text></div>
+                                <div style={{ marginBottom: 4 }}><Text>D: {safeRender(question3Answer.option_d)}</Text></div>
+                              </div>
                               <div style={{ marginTop: 4 }}>
                                 <Text strong>Answer: </Text>
                                 {renderCorrectAnswerTag(safeRender(question3Answer.correct_answer))}
@@ -584,7 +626,7 @@ const Part4TalkManagement: React.FC = () => {
         width={1000}
         confirmLoading={loading}
       >
-        <Spin spinning={optionsLoading}>
+        <Spin spinning={isOptionsLoading}>
           <Form form={form} layout="vertical">
             <Row gutter={16}>
               <Col span={8}>
@@ -642,7 +684,7 @@ const Part4TalkManagement: React.FC = () => {
                   <Select
                     placeholder="Select scenario"
                     allowClear
-                    loading={optionsLoading}
+                    loading={isOptionsLoading}
                   >
                     {scenarios.map((scenario) => (
                       <Select.Option key={scenario.id} value={scenario.id}>
@@ -660,7 +702,7 @@ const Part4TalkManagement: React.FC = () => {
                   <Select
                     placeholder="Select difficulty level"
                     allowClear
-                    loading={optionsLoading}
+                    loading={isOptionsLoading}
                   >
                     {difficultyLevels.map((level) => (
                       <Select.Option key={level.id} value={level.id}>

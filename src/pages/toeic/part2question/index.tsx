@@ -32,6 +32,7 @@ import {
 } from '@/services/part2question/api';
 import { getScenarioOptions } from '@/services/scenario/api';
 import { getDifficultyLevelOptions } from '@/services/difficulty-level/api';
+import { getTestList } from '@/services/test/api';
 
 const { RangePicker } = DatePicker;
 const { TextArea } = Input;
@@ -51,6 +52,7 @@ const Part2QuestionManagement: React.FC = () => {
   // 下拉框选项数据
   const [scenarios, setScenarios] = useState<ScenarioAPI.Scenario[]>([]);
   const [difficultyLevels, setDifficultyLevels] = useState<DifficultyLevelAPI.DifficultyLevel[]>([]);
+  const [tests, setTests] = useState<TestAPI.Test[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
 
   // 分页和查询状态
@@ -66,6 +68,7 @@ const Part2QuestionManagement: React.FC = () => {
     end_date: '',
     scenario_id: '',
     difficulty_level_id: '',
+    test_id: '',
   });
 
   // Export loading state
@@ -92,12 +95,14 @@ const Part2QuestionManagement: React.FC = () => {
   const loadOptions = async () => {
     setOptionsLoading(true);
     try {
-      const [scenarioData, difficultyData] = await Promise.all([
+      const [scenarioData, difficultyData, testData] = await Promise.all([
         getScenarioOptions(),
         getDifficultyLevelOptions(),
+        getTestList({ page: 1, page_size: 100 }),
       ]);
       setScenarios(scenarioData);
       setDifficultyLevels(difficultyData);
+      setTests(testData.data);
     } catch (error) {
       console.error('Failed to load options:', error);
       message.error('Failed to load dropdown options');
@@ -118,6 +123,12 @@ const Part2QuestionManagement: React.FC = () => {
     return level ? level.name || '' : `Level ${difficultyLevelId}`;
   };
 
+  // 获取测试名称
+  const getTestName = (testId: number): string => {
+    const test = tests.find(t => t.id === testId);
+    return test ? test.name || '' : `Test ${testId}`;
+  };
+
   // 渲染正确答案标签
   const renderCorrectAnswerTag = (correctAnswer: string): React.ReactNode => {
     const colors = { A: 'blue', B: 'green', C: 'orange' };
@@ -136,6 +147,7 @@ const Part2QuestionManagement: React.FC = () => {
     end_date?: string;
     scenario_id?: string;
     difficulty_level_id?: string;
+    test_id?: string;
     sort?: string;
     order?: string;
   }) => {
@@ -154,6 +166,7 @@ const Part2QuestionManagement: React.FC = () => {
       if (params?.end_date) queryParams.end_date = params.end_date;
       if (params?.scenario_id) queryParams.scenario_id = params.scenario_id;
       if (params?.difficulty_level_id) queryParams.difficulty_level_id = params.difficulty_level_id;
+      if (params?.test_id) queryParams.test_id = Number(params.test_id);
 
       const response = await getPart2QuestionList(queryParams);
 
@@ -257,6 +270,7 @@ const Part2QuestionManagement: React.FC = () => {
       end_date: values.date_range?.[1]?.format('YYYY-MM-DD') || '',
       scenario_id: values.scenario_id || '',
       difficulty_level_id: values.difficulty_level_id || '',
+      test_id: values.test_id || '',
     };
     setSearchParams(newSearchParams);
     setPagination((prev) => ({ ...prev, current: 1 }));
@@ -274,6 +288,7 @@ const Part2QuestionManagement: React.FC = () => {
       end_date: '',
       scenario_id: '',
       difficulty_level_id: '',
+      test_id: '',
     };
     setSearchParams(resetParams);
     setPagination((prev) => ({ ...prev, current: 1 }));
@@ -462,6 +477,25 @@ const Part2QuestionManagement: React.FC = () => {
             </Col>
           </Row>
           <Row gutter={[16, 16]} style={ { width: '100%', marginTop: 16 } }>
+            <Col span={6}>
+              <Form.Item
+                name="test_id"
+                label="Test"
+              >
+                <Select
+                  placeholder="Select test"
+                  allowClear
+                  loading={optionsLoading}
+                >
+                  <Select.Option value="">All</Select.Option>
+                  {tests.map((test) => (
+                    <Select.Option key={test.id} value={test.id}>
+                      {test.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
             <Col span={12}>
               <Form.Item
                 name="date_range"
@@ -529,7 +563,7 @@ const Part2QuestionManagement: React.FC = () => {
                   <Space>
                     <QuestionCircleOutlined />
                     <Text strong>Question #{safeRender(item.question_number)}</Text>
-                    <Tag color="blue">Test {safeRender(item.test_id)}</Tag>
+                    <Tag color="blue">{getTestName(Number(safeRender(item.test_id)))}</Tag>
                     <Tag color="purple">{getScenarioName(Number(safeRender(item.scenario_id)))}</Tag>
                     <Tag color="orange">{getDifficultyLevelName(Number(safeRender(item.difficulty_level_id)))}</Tag>
                   </Space>
@@ -541,20 +575,20 @@ const Part2QuestionManagement: React.FC = () => {
                   </Title>
                 </div>
 
-                <Row gutter={[16, 8]}>
-                  <Col span={8}>
+                <div style={{ marginLeft: 16 }}>
+                  <div style={{ marginBottom: 4 }}>
                     <Text strong>A: </Text>
                     <Text>{safeRender(item.option_a)}</Text>
-                  </Col>
-                  <Col span={8}>
+                  </div>
+                  <div style={{ marginBottom: 4 }}>
                     <Text strong>B: </Text>
                     <Text>{safeRender(item.option_b)}</Text>
-                  </Col>
-                  <Col span={8}>
+                  </div>
+                  <div style={{ marginBottom: 4 }}>
                     <Text strong>C: </Text>
                     <Text>{safeRender(item.option_c)}</Text>
-                  </Col>
-                </Row>
+                  </div>
+                </div>
 
                 <Divider style={{ margin: '12px 0' }} />
 

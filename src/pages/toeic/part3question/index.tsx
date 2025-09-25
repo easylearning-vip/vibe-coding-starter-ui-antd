@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Button,
   Card,
@@ -35,6 +35,9 @@ import {
 } from '@/services/part3question/api';
 import { getScenarioOptions } from '@/services/scenario/api';
 import { getDifficultyLevelOptions } from '@/services/difficulty-level/api';
+import { getTestList } from '@/services/test/api';
+import { useMultipleApiRequests } from '@/hooks/useApiRequest';
+import { withDeduplication } from '@/utils/requestDeduplication';
 
 const { RangePicker } = DatePicker;
 const { TextArea } = Input;
@@ -50,13 +53,42 @@ const Part3QuestionManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingConversation, setEditingConversation] = useState<Part3Conversation | null>(null);
+  const [initialFormValues, setInitialFormValues] = useState<any>({});
   const [form] = Form.useForm();
   const [searchForm] = Form.useForm();
 
-  // 下拉框选项数据
-  const [scenarios, setScenarios] = useState<ScenarioAPI.Scenario[]>([]);
-  const [difficultyLevels, setDifficultyLevels] = useState<DifficultyLevelAPI.DifficultyLevel[]>([]);
-  const [optionsLoading, setOptionsLoading] = useState(false);
+  // 使用新的API请求hook来管理下拉框选项数据
+  const {
+    data: optionsData,
+    loading: optionsLoading,
+    errors: optionsErrors,
+  } = useMultipleApiRequests({
+    scenarios: {
+      apiFunction: getScenarioOptions,
+      cacheKey: 'scenario_options',
+    },
+    difficultyLevels: {
+      apiFunction: getDifficultyLevelOptions,
+      cacheKey: 'difficulty_level_options',
+    },
+    tests: {
+      apiFunction: () => getTestList({ page: 1, page_size: 100 }),
+      cacheKey: 'test_list_options',
+    },
+  }, {
+    onError: (errors) => {
+      console.error('Failed to load options:', errors);
+      message.error('Failed to load dropdown options');
+    },
+  });
+
+  // Aggregate loading state for options (useMultipleApiRequests returns an object)
+  const isOptionsLoading = Object.values(optionsLoading || {}).some(Boolean);
+
+  // 从API响应中提取数据
+  const scenarios = optionsData.scenarios || [];
+  const difficultyLevels = optionsData.difficultyLevels || [];
+  const tests = optionsData.tests?.data || [];
 
   // 分页和查询状态
   const [pagination, setPagination] = useState({
@@ -71,6 +103,7 @@ const Part3QuestionManagement: React.FC = () => {
     end_date: '',
     scenario_id: '',
     difficulty_level_id: '',
+    test_id: '',
   });
 
   // Export loading state
@@ -94,23 +127,55 @@ const Part3QuestionManagement: React.FC = () => {
     return String(value);
   };
 
-  // 加载下拉框选项数据
-  const loadOptions = async () => {
-    setOptionsLoading(true);
-    try {
-      const [scenarioData, difficultyData] = await Promise.all([
-        getScenarioOptions(),
-        getDifficultyLevelOptions(),
-      ]);
-      setScenarios(scenarioData);
-      setDifficultyLevels(difficultyData);
-    } catch (error) {
-      console.error('Failed to load options:', error);
-      message.error('Failed to load dropdown options');
-    } finally {
-      setOptionsLoading(false);
-    }
+  // Normalize correct answer to uppercase A-D
+  const normalizeAnswer = (val: any): string => {
+    const v = safeRender(val).trim().toUpperCase();
+    return ['A', 'B', 'C', 'D'].includes(v) ? v : '';
   };
+
+  // Convert answer options array to form values object
+  const answersToFormValues = (answers: any[]) => {
+    const find = (n: number) => answers?.find((a: any) => a.question_number === n) || {};
+    const a1: any = find(1);
+    const a2: any = find(2);
+    const a3: any = find(3);
+    return {
+      question1_options: {
+        option_a: safeRender(a1.option_a),
+        option_b: safeRender(a1.option_b),
+        option_c: safeRender(a1.option_c),
+        option_d: safeRender(a1.option_d),
+        correct_answer: normalizeAnswer(a1.correct_answer),
+      },
+      question2_options: {
+        option_a: safeRender(a2.option_a),
+        option_b: safeRender(a2.option_b),
+        option_c: safeRender(a2.option_c),
+        option_d: safeRender(a2.option_d),
+        correct_answer: normalizeAnswer(a2.correct_answer),
+      },
+      question3_options: {
+        option_a: safeRender(a3.option_a),
+        option_b: safeRender(a3.option_b),
+        option_c: safeRender(a3.option_c),
+        option_d: safeRender(a3.option_d),
+        correct_answer: normalizeAnswer(a3.correct_answer),
+      },
+    };
+  };
+
+  // 创建带去重的API函数
+  const dePart3ConversationList = withDeduplication(
+    getPart3ConversationList,
+    (params) => `/api/v1/admin/part3conversations?${JSON.stringify(params)}`,
+    (params) => ({ params })
+  );
+
+  const dePart3AnswerOptionsByConversation = withDeduplication(
+    getPart3AnswerOptionsByConversation,
+    (conversationId) => `/api/v1/admin/part3answeroptions/conversation/${conversationId}`,
+    (conversationId) => ({ params: { conversationId } })
+  );
 
   // 获取场景名称
   const getScenarioName = (scenarioId: number): string => {
@@ -124,6 +189,12 @@ const Part3QuestionManagement: React.FC = () => {
     return level ? level.name || '' : `Level ${difficultyLevelId}`;
   };
 
+  // 获取测试名称
+  const getTestName = (testId: number): string => {
+    const test = tests.find(t => t.id === testId);
+    return test ? test.name || '' : `Test ${testId}`;
+  };
+
   // 渲染正确答案标签
   const renderCorrectAnswerTag = (correctAnswer: string): React.ReactNode => {
     const colors = { A: 'blue', B: 'green', C: 'orange', D: 'red' };
@@ -134,26 +205,26 @@ const Part3QuestionManagement: React.FC = () => {
     );
   };
 
-  // Load answer options for conversations
-  const loadAnswerOptions = async (conversationIds: number[]) => {
+  // Load answer options for conversations - 使用去重版本
+  const loadAnswerOptions = useCallback(async (conversationIds: number[]) => {
     try {
-      const answerPromises = conversationIds.map(id => 
-        getPart3AnswerOptionsByConversation(id).catch(() => [])
+      const answerPromises = conversationIds.map(id =>
+        dePart3AnswerOptionsByConversation(id).catch(() => [])
       );
       const answers = await Promise.all(answerPromises);
-      
+
       const answerMap: Record<number, Part3AnswerOption[]> = {};
       conversationIds.forEach((id, index) => {
         answerMap[id] = answers[index];
       });
-      
+
       setConversationAnswers(prev => ({ ...prev, ...answerMap }));
     } catch (error) {
       console.error('Failed to load answer options:', error);
     }
-  };
+  }, [dePart3AnswerOptionsByConversation]);
 
-  const fetchPart3Conversations = async (params?: {
+  const fetchPart3Conversations = useCallback(async (params?: {
     page?: number;
     pageSize?: number;
     search?: string;
@@ -161,6 +232,7 @@ const Part3QuestionManagement: React.FC = () => {
     end_date?: string;
     scenario_id?: string;
     difficulty_level_id?: string;
+    test_id?: string;
     sort?: string;
     order?: string;
   }) => {
@@ -172,6 +244,7 @@ const Part3QuestionManagement: React.FC = () => {
         search: params?.search || searchParams.search,
         sort: params?.sort || 'created_at',
         order: params?.order || 'desc',
+        include_answer_options: true, // 预加载答案选项
       };
 
       // 添加可选的过滤参数
@@ -179,8 +252,9 @@ const Part3QuestionManagement: React.FC = () => {
       if (params?.end_date) queryParams.end_date = params.end_date;
       if (params?.scenario_id) queryParams.scenario_id = params.scenario_id;
       if (params?.difficulty_level_id) queryParams.difficulty_level_id = params.difficulty_level_id;
+      if (params?.test_id) queryParams.test_id = Number(params.test_id);
 
-      const response = await getPart3ConversationList(queryParams);
+      const response = await dePart3ConversationList(queryParams);
 
       // Transform the data to handle nullable types
       const transformedData = response.data.map((item: any) => ({
@@ -198,32 +272,60 @@ const Part3QuestionManagement: React.FC = () => {
         pageSize: response.size,
       }));
 
-      // Load answer options for the conversations
-      const conversationIds = transformedData.map((item: any) => item.id).filter(Boolean);
-      if (conversationIds.length > 0) {
-        loadAnswerOptions(conversationIds);
-      }
+      // 从响应中提取答案选项，无需额外请求
+      const answersMap: { [key: number]: Part3AnswerOption[] } = {};
+      transformedData.forEach((conversation: any) => {
+        if (conversation.id && conversation.answer_options) {
+          answersMap[conversation.id] = conversation.answer_options;
+        }
+      });
+      setConversationAnswers(answersMap);
     } catch (error) {
       console.error('获取Part3Conversation列表失败:', error);
       message.error('获取Part3Conversation列表失败');
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagination.current, pagination.pageSize, searchParams, dePart3ConversationList, loadAnswerOptions]);
 
-  const handleEdit = (conversation: Part3Conversation) => {
+  const handleEdit = async (conversation: Part3Conversation) => {
     setEditingConversation(conversation);
 
-    // Transform the data to handle nullable types
-    const formData = {
+    // Base data mapping
+    const baseFormData: any = {
       ...conversation,
-      title: (conversation.title as any)?.String || conversation.title || '',
-      scenario_id: (conversation.scenario_id as any)?.Int32 !== undefined ? (conversation.scenario_id as any).Int32 : (conversation.scenario_id || ''),
-      difficulty_level_id: (conversation.difficulty_level_id as any)?.Int32 !== undefined ? (conversation.difficulty_level_id as any).Int32 : (conversation.difficulty_level_id || ''),
+      title: (conversation as any).title?.String || (conversation as any).title || '',
+      scenario_id: (conversation as any).scenario_id?.Int32 !== undefined ? (conversation as any).scenario_id.Int32 : ((conversation as any).scenario_id || ''),
+      difficulty_level_id: (conversation as any).difficulty_level_id?.Int32 !== undefined ? (conversation as any).difficulty_level_id.Int32 : ((conversation as any).difficulty_level_id || ''),
+      content: (conversation as any).content?.String || (conversation as any).content || conversation.content || '',
+      question1: (conversation as any).question1?.String || (conversation as any).question1 || (conversation as any).q1 || '',
+      question2: (conversation as any).question2?.String || (conversation as any).question2 || (conversation as any).q2 || '',
+      question3: (conversation as any).question3?.String || (conversation as any).question3 || (conversation as any).q3 || '',
     };
 
-    form.setFieldsValue(formData);
+    // Prepare initial values including any cached answers for better UX
+    const cachedAnswers: any[] = conversation.id
+      ? ((conversation as any).answer_options || conversationAnswers[conversation.id] || [])
+      : [];
+    const mergedInitial = cachedAnswers && cachedAnswers.length > 0
+      ? { ...baseFormData, ...answersToFormValues(cachedAnswers) }
+      : baseFormData;
+    setInitialFormValues(mergedInitial);
+
+    // Set fields for currently mounted inputs, then show modal
+    form.setFieldsValue(mergedInitial);
     setModalVisible(true);
+
+    // Fetch fresh answer options to ensure correctness; if empty, keep cached values
+    try {
+      const freshAnswers: any[] = conversation.id ? await dePart3AnswerOptionsByConversation(conversation.id) : [];
+      if (freshAnswers && freshAnswers.length > 0) {
+        form.setFieldsValue(answersToFormValues(freshAnswers));
+      }
+    } catch (err) {
+      console.warn('Failed to fetch fresh answer options for edit, falling back to cached if any:', err);
+      // Keep whatever cached values we already set; no action needed
+    }
   };
 
   const handleAdd = () => {
@@ -303,6 +405,7 @@ const Part3QuestionManagement: React.FC = () => {
       end_date: values.date_range?.[1]?.format('YYYY-MM-DD') || '',
       scenario_id: values.scenario_id || '',
       difficulty_level_id: values.difficulty_level_id || '',
+      test_id: values.test_id || '',
     };
     setSearchParams(newSearchParams);
     setPagination((prev) => ({ ...prev, current: 1 }));
@@ -320,6 +423,7 @@ const Part3QuestionManagement: React.FC = () => {
       end_date: '',
       scenario_id: '',
       difficulty_level_id: '',
+      test_id: '',
     };
     setSearchParams(resetParams);
     setPagination((prev) => ({ ...prev, current: 1 }));
@@ -349,7 +453,7 @@ const Part3QuestionManagement: React.FC = () => {
       if (searchParams.scenario_id) queryParams.scenario_id = searchParams.scenario_id;
       if (searchParams.difficulty_level_id) queryParams.difficulty_level_id = searchParams.difficulty_level_id;
 
-      const response = await getPart3ConversationList(queryParams);
+      const response = await dePart3ConversationList(queryParams);
 
       // Transform the data
       const transformedData = response.data.map((item: any) => ({
@@ -425,7 +529,7 @@ const Part3QuestionManagement: React.FC = () => {
   };
 
   useEffect(() => {
-    loadOptions();
+    // 只调用fetchPart3Conversations，选项数据由useMultipleApiRequests自动管理
     fetchPart3Conversations();
   }, []);
 
@@ -464,7 +568,7 @@ const Part3QuestionManagement: React.FC = () => {
                 <Select
                   placeholder="Select scenario"
                   allowClear
-                  loading={optionsLoading}
+                  loading={isOptionsLoading}
                 >
                   <Select.Option value="">All</Select.Option>
                   {scenarios.map((scenario) => (
@@ -483,7 +587,7 @@ const Part3QuestionManagement: React.FC = () => {
                 <Select
                   placeholder="Select difficulty"
                   allowClear
-                  loading={optionsLoading}
+                  loading={isOptionsLoading}
                 >
                   <Select.Option value="">All</Select.Option>
                   {difficultyLevels.map((level) => (
@@ -510,6 +614,25 @@ const Part3QuestionManagement: React.FC = () => {
             </Col>
           </Row>
           <Row gutter={[16, 16]} style={ { width: '100%', marginTop: 16 } }>
+            <Col span={6}>
+              <Form.Item
+                name="test_id"
+                label="Test"
+              >
+                <Select
+                  placeholder="Select test"
+                  allowClear
+                  loading={isOptionsLoading}
+                >
+                  <Select.Option value="">All</Select.Option>
+                  {tests.map((test) => (
+                    <Select.Option key={test.id} value={test.id}>
+                      {test.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
             <Col span={12}>
               <Form.Item
                 name="date_range"
@@ -580,7 +703,7 @@ const Part3QuestionManagement: React.FC = () => {
                     <Space>
                       <MessageOutlined />
                       <Text strong>Conversation #{safeRender(item.conversation_number)}</Text>
-                      <Tag color="blue">Test {safeRender(item.test_id)}</Tag>
+                      <Tag color="blue">{getTestName(Number(safeRender(item.test_id)))}</Tag>
                       <Tag color="purple">{getScenarioName(Number(safeRender(item.scenario_id)))}</Tag>
                       <Tag color="orange">{getDifficultyLevelName(Number(safeRender(item.difficulty_level_id)))}</Tag>
                     </Space>
@@ -609,12 +732,12 @@ const Part3QuestionManagement: React.FC = () => {
                           <Text>{safeRender(item.question1)}</Text>
                           {question1Answer && (
                             <div style={{ marginTop: 4, marginLeft: 16 }}>
-                              <Row gutter={[8, 4]}>
-                                <Col span={6}><Text>A: {safeRender(question1Answer.option_a)}</Text></Col>
-                                <Col span={6}><Text>B: {safeRender(question1Answer.option_b)}</Text></Col>
-                                <Col span={6}><Text>C: {safeRender(question1Answer.option_c)}</Text></Col>
-                                <Col span={6}><Text>D: {safeRender(question1Answer.option_d)}</Text></Col>
-                              </Row>
+                              <div style={{ marginLeft: 16 }}>
+                                <div style={{ marginBottom: 4 }}><Text>A: {safeRender(question1Answer.option_a)}</Text></div>
+                                <div style={{ marginBottom: 4 }}><Text>B: {safeRender(question1Answer.option_b)}</Text></div>
+                                <div style={{ marginBottom: 4 }}><Text>C: {safeRender(question1Answer.option_c)}</Text></div>
+                                <div style={{ marginBottom: 4 }}><Text>D: {safeRender(question1Answer.option_d)}</Text></div>
+                              </div>
                               <div style={{ marginTop: 4 }}>
                                 <Text strong>Answer: </Text>
                                 {renderCorrectAnswerTag(safeRender(question1Answer.correct_answer))}
@@ -630,12 +753,12 @@ const Part3QuestionManagement: React.FC = () => {
                           <Text>{safeRender(item.question2)}</Text>
                           {question2Answer && (
                             <div style={{ marginTop: 4, marginLeft: 16 }}>
-                              <Row gutter={[8, 4]}>
-                                <Col span={6}><Text>A: {safeRender(question2Answer.option_a)}</Text></Col>
-                                <Col span={6}><Text>B: {safeRender(question2Answer.option_b)}</Text></Col>
-                                <Col span={6}><Text>C: {safeRender(question2Answer.option_c)}</Text></Col>
-                                <Col span={6}><Text>D: {safeRender(question2Answer.option_d)}</Text></Col>
-                              </Row>
+                              <div style={{ marginLeft: 16 }}>
+                                <div style={{ marginBottom: 4 }}><Text>A: {safeRender(question2Answer.option_a)}</Text></div>
+                                <div style={{ marginBottom: 4 }}><Text>B: {safeRender(question2Answer.option_b)}</Text></div>
+                                <div style={{ marginBottom: 4 }}><Text>C: {safeRender(question2Answer.option_c)}</Text></div>
+                                <div style={{ marginBottom: 4 }}><Text>D: {safeRender(question2Answer.option_d)}</Text></div>
+                              </div>
                               <div style={{ marginTop: 4 }}>
                                 <Text strong>Answer: </Text>
                                 {renderCorrectAnswerTag(safeRender(question2Answer.correct_answer))}
@@ -651,12 +774,12 @@ const Part3QuestionManagement: React.FC = () => {
                           <Text>{safeRender(item.question3)}</Text>
                           {question3Answer && (
                             <div style={{ marginTop: 4, marginLeft: 16 }}>
-                              <Row gutter={[8, 4]}>
-                                <Col span={6}><Text>A: {safeRender(question3Answer.option_a)}</Text></Col>
-                                <Col span={6}><Text>B: {safeRender(question3Answer.option_b)}</Text></Col>
-                                <Col span={6}><Text>C: {safeRender(question3Answer.option_c)}</Text></Col>
-                                <Col span={6}><Text>D: {safeRender(question3Answer.option_d)}</Text></Col>
-                              </Row>
+                              <div style={{ marginLeft: 16 }}>
+                                <div style={{ marginBottom: 4 }}><Text>A: {safeRender(question3Answer.option_a)}</Text></div>
+                                <div style={{ marginBottom: 4 }}><Text>B: {safeRender(question3Answer.option_b)}</Text></div>
+                                <div style={{ marginBottom: 4 }}><Text>C: {safeRender(question3Answer.option_c)}</Text></div>
+                                <div style={{ marginBottom: 4 }}><Text>D: {safeRender(question3Answer.option_d)}</Text></div>
+                              </div>
                               <div style={{ marginTop: 4 }}>
                                 <Text strong>Answer: </Text>
                                 {renderCorrectAnswerTag(safeRender(question3Answer.correct_answer))}
@@ -716,8 +839,8 @@ const Part3QuestionManagement: React.FC = () => {
         width={1000}
         confirmLoading={loading}
       >
-        <Spin spinning={optionsLoading}>
-          <Form form={form} layout="vertical">
+        <Spin spinning={isOptionsLoading}>
+          <Form key={(editingConversation?.id ?? 'new') + '-' + (modalVisible ? 'open' : 'closed')} form={form} layout="vertical" initialValues={initialFormValues}>
             <Row gutter={16}>
               <Col span={8}>
                 <Form.Item
@@ -950,7 +1073,7 @@ const Part3QuestionManagement: React.FC = () => {
                 >
                   <Select
                     placeholder="Select scenario"
-                    loading={optionsLoading}
+                    loading={isOptionsLoading}
                     showSearch
                     filterOption={(input, option) =>
                       (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
@@ -971,7 +1094,7 @@ const Part3QuestionManagement: React.FC = () => {
                 >
                   <Select
                     placeholder="Select difficulty level"
-                    loading={optionsLoading}
+                    loading={isOptionsLoading}
                     showSearch
                     filterOption={(input, option) =>
                       (option?.label ?? '').toLowerCase().includes(input.toLowerCase())

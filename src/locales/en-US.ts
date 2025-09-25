@@ -8,6 +8,8 @@ import settingDrawer from './en-US/settingDrawer';
 import settings from './en-US/settings';
 import test from './en-US/test';
 import part2question from './en-US/part2question';
+import part3question from './en-US/part3question';
+import part4talk from './en-US/part4talk';
 import toeic from './en-US/toeic';
 
 export default {
@@ -28,6 +30,8 @@ export default {
   ...component,
   ...test,
   ...part2question,
+  ...part3question,
+  ...part4talk,
   ...department,
   ...toeic,
 };
