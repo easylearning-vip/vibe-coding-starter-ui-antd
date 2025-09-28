@@ -112,3 +112,25 @@ export async function logout(): Promise<void> {
   // Clear token from sessionStorage if used
   sessionStorage.removeItem('token');
 }
+
+/**
+ * User token management (admin only)
+ */
+export async function getUserToken(id: number): Promise<{ token: string | null }> {
+  return request<{ token: string | null }>(`${API_BASE}/users/${id}/token`, {
+    method: 'GET',
+  });
+}
+
+export async function generateUserToken(id: number): Promise<{ token: string }> {
+  return request<{ token: string }>(`${API_BASE}/users/${id}/token/generate`, {
+    method: 'POST',
+  });
+}
+
+export async function clearUserToken(id: number): Promise<SuccessResponse> {
+  return request<SuccessResponse>(`${API_BASE}/users/${id}/token`, {
+    method: 'DELETE',
+  });
+}
+

@@ -42,6 +42,17 @@ export default [
       { path: '/toeic/part4talk', name: 'Part4题库', component: './toeic/part4talk' },
     ],
   },
+  {
+    path: '/mytoeic',
+    name: '我的托业',
+    icon: 'user',
+    routes: [
+      { path: '/mytoeic', redirect: '/mytoeic/part2PracticeSet' },
+      { path: '/mytoeic/part2PracticeSet', name: 'Part2练习集', component: './mytoeic/part2PracticeSet' },
+      { path: '/mytoeic/part3PracticeSet', name: 'Part3练习集', component: './mytoeic/part3PracticeSet' },
+      { path: '/mytoeic/part4PracticeSet', name: 'Part4练习集', component: './mytoeic/part4PracticeSet' },
+    ],
+  },
   { name: '文章管理', path: '/articles', component: './articles' },
   { path: '/', redirect: '/welcome' },
   { path: '*', layout: false, component: './404' },

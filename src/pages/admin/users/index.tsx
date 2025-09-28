@@ -31,6 +31,9 @@ import {
   deleteUser,
   getUserList,
   updateUser,
+  getUserToken,
+  generateUserToken,
+  clearUserToken,
 } from '@/services/user/api';
 
 const UserManagement: React.FC = () => {
@@ -124,6 +127,12 @@ const UserManagement: React.FC = () => {
           >
             {intl.formatMessage({ id: 'pages.common.edit' })}
           </Button>
+          <Button type="link" onClick={() => handleViewToken(record)}>
+            Token
+          </Button>
+          <Button type="link" onClick={() => handleGenerateToken(record)}>
+            Gen Token
+          </Button>
           <Popconfirm
             title={intl.formatMessage({
               id: 'pages.users.delete.confirm.title',
@@ -138,6 +147,16 @@ const UserManagement: React.FC = () => {
           >
             <Button type="link" danger icon={<DeleteOutlined />}>
               {intl.formatMessage({ id: 'pages.common.delete' })}
+            </Button>
+          </Popconfirm>
+          <Popconfirm
+            title={`` || '确认清空该用户的 Token?'}
+            onConfirm={() => handleClearToken(record)}
+            okText={intl.formatMessage({ id: 'pages.common.confirm' })}
+            cancelText={intl.formatMessage({ id: 'pages.common.cancel' })}
+          >
+            <Button type="link" danger>
+              Clear Token
             </Button>
           </Popconfirm>
         </Space>
@@ -208,8 +227,63 @@ const UserManagement: React.FC = () => {
       fetchUsers();
     } catch (error) {
       console.error('删除用户失败:', error);
-      message.error('删除用户失败');
     }
+  };
+
+  // Token 管理
+  const handleViewToken = async (user: User) => {
+    try {
+      const res = await getUserToken(user.id);
+      Modal.info({
+        title: `用户 ${user.username} 的 API Token`,
+        content: (
+          <Input.TextArea value={res.token || ''} readOnly autoSize={{ minRows: 2 }} />
+        ),
+        width: 520,
+      });
+    } catch (e) {
+      message.error('获取用户 Token 失败');
+    }
+  };
+
+  const handleGenerateToken = async (user: User) => {
+    Modal.confirm({
+      title: `为用户 ${user.username} 生成新 Token?`,
+      content: '生成新 Token 会覆盖旧的 Token。',
+      onOk: async () => {
+        try {
+          const res = await generateUserToken(user.id);
+          Modal.success({
+            title: '生成成功',
+            content: (
+              <div>
+                <div>请妥善保存该 Token：</div>
+                <Input.TextArea value={res.token} readOnly autoSize={{ minRows: 2 }} />
+              </div>
+            ),
+            width: 520,
+          });
+          fetchUsers();
+        } catch (e) {
+          message.error('生成 Token 失败');
+        }
+      },
+    });
+  };
+
+  const handleClearToken = async (user: User) => {
+    Modal.confirm({
+      title: `清空用户 ${user.username} 的 Token?`,
+      onOk: async () => {
+        try {
+          await clearUserToken(user.id);
+          message.success('已清空 Token');
+          fetchUsers();
+        } catch (e) {
+          message.error('清空 Token 失败');
+        }
+      },
+    });
   };
 
   const handleAdd = () => {

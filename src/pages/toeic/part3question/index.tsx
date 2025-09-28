@@ -20,8 +20,10 @@ import {
   Spin,
   Pagination,
   Collapse,
+  Checkbox,
 } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, MessageOutlined, DownloadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, MessageOutlined, DownloadOutlined, BookOutlined } from '@ant-design/icons';
+import AddToPracticeSetModal from '@/components/AddToPracticeSetModal';
 import { PageContainer } from '@ant-design/pro-components';
 import { useIntl } from '@umijs/max';
 import dayjs from 'dayjs';
@@ -108,6 +110,13 @@ const Part3QuestionManagement: React.FC = () => {
 
   // Export loading state
   const [exportLoading, setExportLoading] = useState(false);
+
+  // Practice set modal state
+  const [practiceSetModalVisible, setPracticeSetModalVisible] = useState(false);
+
+  // Multi-selection state
+  const [selectedConversations, setSelectedConversations] = useState<Part3Conversation[]>([]);
+  const [selectAll, setSelectAll] = useState(false);
 
   // Answer options for each conversation
   const [conversationAnswers, setConversationAnswers] = useState<Record<number, Part3AnswerOption[]>>({});
@@ -528,10 +537,51 @@ const Part3QuestionManagement: React.FC = () => {
     }
   };
 
+  // Selection handling functions
+  const handleSelectConversation = (conversation: Part3Conversation, checked: boolean) => {
+    if (checked) {
+      setSelectedConversations(prev => [...prev, conversation]);
+    } else {
+      setSelectedConversations(prev => prev.filter(c => c.id !== conversation.id));
+      setSelectAll(false);
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    setSelectAll(checked);
+    if (checked) {
+      setSelectedConversations([...part3Conversations]);
+    } else {
+      setSelectedConversations([]);
+    }
+  };
+
+  const isConversationSelected = (conversation: Part3Conversation) => {
+    return selectedConversations.some(c => c.id === conversation.id);
+  };
+
+  // Handle practice set creation with selected conversations
+  const handleAddSelectedToPracticeSet = () => {
+    if (selectedConversations.length === 0) {
+      message.warning('Please select at least one conversation');
+      return;
+    }
+    setPracticeSetModalVisible(true);
+  };
+
   useEffect(() => {
     // 只调用fetchPart3Conversations，选项数据由useMultipleApiRequests自动管理
     fetchPart3Conversations();
   }, []);
+
+  // Update selectAll state when conversations change
+  useEffect(() => {
+    if (part3Conversations.length > 0 && selectedConversations.length === part3Conversations.length) {
+      setSelectAll(true);
+    } else {
+      setSelectAll(false);
+    }
+  }, [selectedConversations, part3Conversations]);
 
   const buttonStyle = { marginBottom: 16 };
 
@@ -648,18 +698,50 @@ const Part3QuestionManagement: React.FC = () => {
         </Form>
 
         <div style={buttonStyle}>
-          <Space>
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-              Add New Conversation
-            </Button>
-            <Button
-              icon={<DownloadOutlined />}
-              onClick={handleExport}
-              loading={exportLoading}
-            >
-              Export
-            </Button>
-          </Space>
+          <Row justify="space-between" align="middle">
+            <Col>
+              <Space>
+                <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+                  Add New Conversation
+                </Button>
+                <Button
+                  icon={<BookOutlined />}
+                  onClick={() => setPracticeSetModalVisible(true)}
+                >
+                  Auto-Generate Practice Set
+                </Button>
+                <Button
+                  icon={<DownloadOutlined />}
+                  onClick={handleExport}
+                  loading={exportLoading}
+                >
+                  Export
+                </Button>
+              </Space>
+            </Col>
+            <Col>
+              <Space>
+                <Checkbox
+                  checked={selectAll}
+                  indeterminate={selectedConversations.length > 0 && selectedConversations.length < part3Conversations.length}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                >
+                  Select All
+                </Checkbox>
+                <Text type="secondary">
+                  {selectedConversations.length} selected
+                </Text>
+                <Button
+                  type="primary"
+                  icon={<BookOutlined />}
+                  onClick={handleAddSelectedToPracticeSet}
+                  disabled={selectedConversations.length === 0}
+                >
+                  Add Selected to Practice Set
+                </Button>
+              </Space>
+            </Col>
+          </Row>
         </div>
 
         <List
@@ -675,6 +757,11 @@ const Part3QuestionManagement: React.FC = () => {
               <List.Item
                 key={item.id}
                 actions={[
+                  <Checkbox
+                    key="select"
+                    checked={isConversationSelected(item)}
+                    onChange={(e) => handleSelectConversation(item, e.target.checked)}
+                  />,
                   <Button
                     key="edit"
                     type="link"
@@ -1111,6 +1198,30 @@ const Part3QuestionManagement: React.FC = () => {
           </Form>
         </Spin>
       </Modal>
+
+      <AddToPracticeSetModal
+        visible={practiceSetModalVisible}
+        onCancel={() => {
+          setPracticeSetModalVisible(false);
+          // Clear selection after modal closes if it was for selected conversations
+          if (selectedConversations.length > 0) {
+            setSelectedConversations([]);
+            setSelectAll(false);
+          }
+        }}
+        onSuccess={() => {
+          message.success('Practice set created successfully!');
+          // Clear selection after successful creation
+          setSelectedConversations([]);
+          setSelectAll(false);
+        }}
+        toeicPart="part3"
+        title={selectedConversations.length > 0 ?
+          `Add ${selectedConversations.length} Selected Conversations to Practice Set` :
+          "Auto-Generate Part 3 Practice Set"}
+        selectedQuestions={selectedConversations}
+        mode={selectedConversations.length > 0 ? 'selected-questions' : 'auto-generate'}
+      />
     </PageContainer>
   );
 };

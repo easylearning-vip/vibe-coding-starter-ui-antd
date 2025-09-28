@@ -20,8 +20,10 @@ import {
   Spin,
   Pagination,
   Collapse,
+  Checkbox,
 } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, MessageOutlined, DownloadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, MessageOutlined, DownloadOutlined, BookOutlined } from '@ant-design/icons';
+import AddToPracticeSetModal from '@/components/AddToPracticeSetModal';
 import { PageContainer } from '@ant-design/pro-components';
 import { useIntl } from '@umijs/max';
 import dayjs from 'dayjs';
@@ -96,6 +98,13 @@ const Part4TalkManagement: React.FC = () => {
     pageSize: 10,
     total: 0,
   });
+
+  // Practice set modal state
+  const [practiceSetModalVisible, setPracticeSetModalVisible] = useState(false);
+
+  // Multi-selection state
+  const [selectedTalks, setSelectedTalks] = useState<Part4Talk[]>([]);
+  const [selectAll, setSelectAll] = useState(false);
 
   // 答案选项状态
   const [talkAnswers, setTalkAnswers] = useState<{ [key: number]: Part4AnswerOption[] }>({});
@@ -222,10 +231,51 @@ const Part4TalkManagement: React.FC = () => {
     fetchPart4Talks({ page, page_size: pageSize });
   };
 
+  // Selection handling functions
+  const handleSelectTalk = (talk: Part4Talk, checked: boolean) => {
+    if (checked) {
+      setSelectedTalks(prev => [...prev, talk]);
+    } else {
+      setSelectedTalks(prev => prev.filter(t => t.id !== talk.id));
+      setSelectAll(false);
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    setSelectAll(checked);
+    if (checked) {
+      setSelectedTalks([...part4Talks]);
+    } else {
+      setSelectedTalks([]);
+    }
+  };
+
+  const isTalkSelected = (talk: Part4Talk) => {
+    return selectedTalks.some(t => t.id === talk.id);
+  };
+
+  // Handle practice set creation with selected talks
+  const handleAddSelectedToPracticeSet = () => {
+    if (selectedTalks.length === 0) {
+      message.warning('Please select at least one talk');
+      return;
+    }
+    setPracticeSetModalVisible(true);
+  };
+
   // 初始化 - 只调用fetchPart4Talks，选项数据由useMultipleApiRequests自动管理
   useEffect(() => {
     fetchPart4Talks();
   }, []); // 移除fetchPart4Talks依赖，避免无限循环
+
+  // Update selectAll state when talks change
+  useEffect(() => {
+    if (part4Talks.length > 0 && selectedTalks.length === part4Talks.length) {
+      setSelectAll(true);
+    } else {
+      setSelectAll(false);
+    }
+  }, [selectedTalks, part4Talks]);
 
   // 新增对话
   const handleAdd = () => {
@@ -443,13 +493,50 @@ const Part4TalkManagement: React.FC = () => {
                 <Button onClick={handleReset} icon={<ReloadOutlined />}>
                   Reset
                 </Button>
-                <Button type="primary" onClick={handleAdd} icon={<PlusOutlined />}>
-                  Add New Talk
-                </Button>
               </Space>
             </Col>
           </Row>
         </Form>
+
+        <div style={{ marginBottom: 16 }}>
+          <Row justify="space-between" align="middle">
+            <Col>
+              <Space>
+                <Button type="primary" onClick={handleAdd} icon={<PlusOutlined />}>
+                  Add New Talk
+                </Button>
+                <Button
+                  icon={<BookOutlined />}
+                  onClick={() => setPracticeSetModalVisible(true)}
+                >
+                  Auto-Generate Practice Set
+                </Button>
+              </Space>
+            </Col>
+            <Col>
+              <Space>
+                <Checkbox
+                  checked={selectAll}
+                  indeterminate={selectedTalks.length > 0 && selectedTalks.length < part4Talks.length}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                >
+                  Select All
+                </Checkbox>
+                <Text type="secondary">
+                  {selectedTalks.length} selected
+                </Text>
+                <Button
+                  type="primary"
+                  icon={<BookOutlined />}
+                  onClick={handleAddSelectedToPracticeSet}
+                  disabled={selectedTalks.length === 0}
+                >
+                  Add Selected to Practice Set
+                </Button>
+              </Space>
+            </Col>
+          </Row>
+        </div>
 
         <List
           loading={loading}
@@ -464,6 +551,11 @@ const Part4TalkManagement: React.FC = () => {
               <List.Item
                 key={item.id}
                 actions={[
+                  <Checkbox
+                    key="select"
+                    checked={isTalkSelected(item)}
+                    onChange={(e) => handleSelectTalk(item, e.target.checked)}
+                  />,
                   <Button
                     key="edit"
                     type="link"
@@ -870,6 +962,30 @@ const Part4TalkManagement: React.FC = () => {
           </Form>
         </Spin>
       </Modal>
+
+      <AddToPracticeSetModal
+        visible={practiceSetModalVisible}
+        onCancel={() => {
+          setPracticeSetModalVisible(false);
+          // Clear selection after modal closes if it was for selected talks
+          if (selectedTalks.length > 0) {
+            setSelectedTalks([]);
+            setSelectAll(false);
+          }
+        }}
+        onSuccess={() => {
+          message.success('Practice set created successfully!');
+          // Clear selection after successful creation
+          setSelectedTalks([]);
+          setSelectAll(false);
+        }}
+        toeicPart="part4"
+        title={selectedTalks.length > 0 ?
+          `Add ${selectedTalks.length} Selected Talks to Practice Set` :
+          "Auto-Generate Part 4 Practice Set"}
+        selectedQuestions={selectedTalks}
+        mode={selectedTalks.length > 0 ? 'selected-questions' : 'auto-generate'}
+      />
     </PageContainer>
   );
 };

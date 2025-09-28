@@ -19,8 +19,10 @@ import {
   Divider,
   Spin,
   Pagination,
+  Checkbox,
 } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, QuestionCircleOutlined, DownloadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, QuestionCircleOutlined, DownloadOutlined, BookOutlined } from '@ant-design/icons';
+import AddToPracticeSetModal from '@/components/AddToPracticeSetModal';
 import { PageContainer } from '@ant-design/pro-components';
 import { useIntl } from '@umijs/max';
 import dayjs from 'dayjs';
@@ -73,6 +75,13 @@ const Part2QuestionManagement: React.FC = () => {
 
   // Export loading state
   const [exportLoading, setExportLoading] = useState(false);
+
+  // Practice set modal state
+  const [practiceSetModalVisible, setPracticeSetModalVisible] = useState(false);
+
+  // Multi-selection state
+  const [selectedQuestions, setSelectedQuestions] = useState<Part2Question[]>([]);
+  const [selectAll, setSelectAll] = useState(false);
 
 
 
@@ -389,10 +398,51 @@ const Part2QuestionManagement: React.FC = () => {
     }
   };
 
+  // Selection handling functions
+  const handleSelectQuestion = (question: Part2Question, checked: boolean) => {
+    if (checked) {
+      setSelectedQuestions(prev => [...prev, question]);
+    } else {
+      setSelectedQuestions(prev => prev.filter(q => q.id !== question.id));
+      setSelectAll(false);
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    setSelectAll(checked);
+    if (checked) {
+      setSelectedQuestions([...part2Questions]);
+    } else {
+      setSelectedQuestions([]);
+    }
+  };
+
+  const isQuestionSelected = (question: Part2Question) => {
+    return selectedQuestions.some(q => q.id === question.id);
+  };
+
+  // Handle practice set creation with selected questions
+  const handleAddSelectedToPracticeSet = () => {
+    if (selectedQuestions.length === 0) {
+      message.warning('Please select at least one question');
+      return;
+    }
+    setPracticeSetModalVisible(true);
+  };
+
   useEffect(() => {
     loadOptions();
     fetchPart2Questions();
   }, []);
+
+  // Update selectAll state when questions change
+  useEffect(() => {
+    if (part2Questions.length > 0 && selectedQuestions.length === part2Questions.length) {
+      setSelectAll(true);
+    } else {
+      setSelectAll(false);
+    }
+  }, [selectedQuestions, part2Questions]);
 
   const buttonStyle = { marginBottom: 16 };
 
@@ -514,18 +564,50 @@ const Part2QuestionManagement: React.FC = () => {
         </Form>
 
         <div style={buttonStyle}>
-          <Space>
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-              {intl.formatMessage({ id: 'pages.part2Question.button.add' })}
-            </Button>
-            <Button
-              icon={<DownloadOutlined />}
-              onClick={handleExport}
-              loading={exportLoading}
-            >
-              Export
-            </Button>
-          </Space>
+          <Row justify="space-between" align="middle">
+            <Col>
+              <Space>
+                <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+                  {intl.formatMessage({ id: 'pages.part2Question.button.add' })}
+                </Button>
+                <Button
+                  icon={<BookOutlined />}
+                  onClick={() => setPracticeSetModalVisible(true)}
+                >
+                  Auto-Generate Practice Set
+                </Button>
+                <Button
+                  icon={<DownloadOutlined />}
+                  onClick={handleExport}
+                  loading={exportLoading}
+                >
+                  Export
+                </Button>
+              </Space>
+            </Col>
+            <Col>
+              <Space>
+                <Checkbox
+                  checked={selectAll}
+                  indeterminate={selectedQuestions.length > 0 && selectedQuestions.length < part2Questions.length}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                >
+                  Select All
+                </Checkbox>
+                <Text type="secondary">
+                  {selectedQuestions.length} selected
+                </Text>
+                <Button
+                  type="primary"
+                  icon={<BookOutlined />}
+                  onClick={handleAddSelectedToPracticeSet}
+                  disabled={selectedQuestions.length === 0}
+                >
+                  Add Selected to Practice Set
+                </Button>
+              </Space>
+            </Col>
+          </Row>
         </div>
 
         <List
@@ -535,6 +617,11 @@ const Part2QuestionManagement: React.FC = () => {
             <List.Item
               key={item.id}
               actions={[
+                <Checkbox
+                  key="select"
+                  checked={isQuestionSelected(item)}
+                  onChange={(e) => handleSelectQuestion(item, e.target.checked)}
+                />,
                 <Button
                   key="edit"
                   type="link"
@@ -766,6 +853,30 @@ const Part2QuestionManagement: React.FC = () => {
           </Form>
         </Spin>
       </Modal>
+
+      <AddToPracticeSetModal
+        visible={practiceSetModalVisible}
+        onCancel={() => {
+          setPracticeSetModalVisible(false);
+          // Clear selection after modal closes if it was for selected questions
+          if (selectedQuestions.length > 0) {
+            setSelectedQuestions([]);
+            setSelectAll(false);
+          }
+        }}
+        onSuccess={() => {
+          message.success('Practice set created successfully!');
+          // Clear selection after successful creation
+          setSelectedQuestions([]);
+          setSelectAll(false);
+        }}
+        toeicPart="part2"
+        title={selectedQuestions.length > 0 ?
+          `Add ${selectedQuestions.length} Selected Questions to Practice Set` :
+          "Auto-Generate Part 2 Practice Set"}
+        selectedQuestions={selectedQuestions}
+        mode={selectedQuestions.length > 0 ? 'selected-questions' : 'auto-generate'}
+      />
     </PageContainer>
   );
 };
