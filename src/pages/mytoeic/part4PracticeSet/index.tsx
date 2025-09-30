@@ -364,7 +364,8 @@ const Part4PracticeSetManagement: React.FC = () => {
           </Row>
         </Form>
 
-        <List
+        <div style={{ overflowX: 'auto', minWidth: '800px' }}>
+          <List
           loading={loading}
           dataSource={practiceSets}
           renderItem={(item: Part4PracticeSet) => {
@@ -465,6 +466,7 @@ const Part4PracticeSetManagement: React.FC = () => {
             );
           }}
         />
+        </div>
 
         <div style={{ textAlign: 'center', marginTop: 16 }}>
           <Pagination

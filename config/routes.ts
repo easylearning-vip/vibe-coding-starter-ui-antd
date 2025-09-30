@@ -40,6 +40,7 @@ export default [
       { path: '/toeic/part2question', name: 'Part2题库', component: './toeic/part2question' },
       { path: '/toeic/part3question', name: 'Part3题库', component: './toeic/part3question' },
       { path: '/toeic/part4talk', name: 'Part4题库', component: './toeic/part4talk' },
+      { path: '/toeic/ai-prompts', name: '提示词', component: './toeic/ai-prompts' },
     ],
   },
   {

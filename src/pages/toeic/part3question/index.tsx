@@ -744,7 +744,8 @@ const Part3QuestionManagement: React.FC = () => {
           </Row>
         </div>
 
-        <List
+        <div style={{ overflowX: 'auto', minWidth: '800px' }}>
+          <List
           loading={loading}
           dataSource={part3Conversations}
           renderItem={(item: Part3Conversation) => {
@@ -892,6 +893,7 @@ const Part3QuestionManagement: React.FC = () => {
             );
           }}
         />
+        </div>
 
         <div style={{ textAlign: 'center', marginTop: 16 }}>
           <Pagination

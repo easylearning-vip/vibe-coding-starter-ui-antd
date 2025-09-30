@@ -538,7 +538,8 @@ const Part4TalkManagement: React.FC = () => {
           </Row>
         </div>
 
-        <List
+        <div style={{ overflowX: 'auto', minWidth: '800px' }}>
+          <List
           loading={loading}
           dataSource={part4Talks}
           renderItem={(item: Part4Talk) => {
@@ -688,6 +689,7 @@ const Part4TalkManagement: React.FC = () => {
             );
           }}
         />
+        </div>
 
         {/* 分页 */}
         <div style={{ textAlign: 'center', marginTop: 16 }}>
