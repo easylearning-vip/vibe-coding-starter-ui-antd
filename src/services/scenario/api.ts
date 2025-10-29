@@ -74,9 +74,10 @@ export async function deleteScenario(id: number): Promise<ScenarioAPI.SuccessRes
 
 /**
  * 获取所有Scenario选项（用于下拉框）
+ * 使用非admin路径，所有认证用户都可以访问
  */
 export async function getScenarioOptions(): Promise<ScenarioAPI.Scenario[]> {
-  const response = await request<ScenarioListResponse>(`${API_BASE}/scenarios`, {
+  const response = await request<ScenarioListResponse>(`/api/v1/scenarios`, {
     method: 'GET',
     params: {
       page: 1,

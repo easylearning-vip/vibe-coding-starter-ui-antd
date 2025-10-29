@@ -74,9 +74,10 @@ export async function deleteDifficultyLevel(id: number): Promise<DifficultyLevel
 
 /**
  * 获取所有DifficultyLevel选项（用于下拉框）
+ * 使用非admin路径，所有认证用户都可以访问
  */
 export async function getDifficultyLevelOptions(): Promise<DifficultyLevelAPI.DifficultyLevel[]> {
-  const response = await request<DifficultyLevelListResponse>(`${API_BASE}/difficultylevels`, {
+  const response = await request<DifficultyLevelListResponse>(`/api/v1/difficultylevels`, {
     method: 'GET',
     params: {
       page: 1,
